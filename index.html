@@ -52,7 +52,7 @@
 
   .tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     margin: 16px 0;
   }
@@ -239,6 +239,72 @@
     margin-top: 10px;
   }
 
+
+  .trend-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 14px;
+  }
+
+  .trend-toggle {
+    display: flex;
+    gap: 6px;
+  }
+
+  .trend-toggle button.active {
+    background: var(--primary);
+    color: white;
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    background: white;
+    padding: 8px;
+  }
+
+  #trendCanvas {
+    display: block;
+    min-width: 620px;
+    width: 100%;
+    height: 340px;
+  }
+
+  .chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin-top: 12px;
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  .trend-summary {
+    margin-top: 12px;
+  }
+
+  @media (max-width: 640px) {
+    .trend-controls { grid-template-columns: 1fr; }
+  }
+
   @media (max-width: 640px) {
     .app { padding: 12px; }
     .grid.two { grid-template-columns: 1fr; }
@@ -259,6 +325,7 @@
   <nav class="tabs">
     <button class="tab active" data-tab="current">Current Workout</button>
     <button class="tab" data-tab="history">History</button>
+    <button class="tab" data-tab="trends">Trends</button>
     <button class="tab" data-tab="data">Data</button>
   </nav>
 
@@ -332,6 +399,34 @@
     </div>
   </section>
 
+
+  <section id="trends" class="panel">
+    <div class="card">
+      <h2>Trends</h2>
+
+      <div class="trend-controls">
+        <div>
+          <label for="trendExercise">Exercise</label>
+          <select id="trendExercise"></select>
+        </div>
+
+        <div id="trendToggle" class="trend-toggle">
+          <button id="volumeTrendBtn" class="btn-secondary active" type="button">Volume</button>
+          <button id="setsTrendBtn" class="btn-secondary" type="button">Sets</button>
+        </div>
+      </div>
+
+      <div id="trendDescription" class="small"></div>
+
+      <div class="chart-wrap">
+        <canvas id="trendCanvas" width="820" height="340"></canvas>
+      </div>
+
+      <div id="trendLegend" class="chart-legend"></div>
+      <div id="trendSummary" class="trend-summary small"></div>
+    </div>
+  </section>
+
   <section id="data" class="panel">
     <div class="card">
       <h2>Backup and Restore</h2>
@@ -363,7 +458,6 @@ const EXERCISES = {
     { name: "Overhead Triceps Extension", type: "strength" },
     { name: "Push-ups", type: "strength" }
   ],
-
   Pull: [
     { name: "Barbell Rows", type: "strength" },
     { name: "Biceps Curls", type: "strength" },
@@ -375,7 +469,6 @@ const EXERCISES = {
     { name: "Reverse Fly", type: "strength" },
     { name: "Seated Cable Rows", type: "strength" }
   ],
-
   "Posterior Chain": [
     { name: "Back Extensions", type: "strength" },
     { name: "Deadlifts", type: "strength" },
@@ -384,7 +477,6 @@ const EXERCISES = {
     { name: "Lying Hamstring Curls", type: "strength" },
     { name: "RDLs", type: "strength" }
   ],
-
   Legs: [
     { name: "Calf Raises", type: "strength" },
     { name: "Leg Extensions", type: "strength" },
@@ -393,7 +485,6 @@ const EXERCISES = {
     { name: "Seated Calf Raises", type: "strength" },
     { name: "Squats", type: "strength" }
   ],
-
   Cardio: [
     { name: "Cycling", type: "duration" },
     { name: "Hiking", type: "duration" },
@@ -428,6 +519,16 @@ const historyExerciseFilter = document.getElementById("historyExerciseFilter");
 const exerciseHistoryCard = document.getElementById("exerciseHistoryCard");
 const exerciseHistoryTitle = document.getElementById("exerciseHistoryTitle");
 const exerciseHistoryList = document.getElementById("exerciseHistoryList");
+const trendExercise = document.getElementById("trendExercise");
+const trendCanvas = document.getElementById("trendCanvas");
+const trendLegend = document.getElementById("trendLegend");
+const trendSummary = document.getElementById("trendSummary");
+const trendDescription = document.getElementById("trendDescription");
+const trendToggle = document.getElementById("trendToggle");
+const volumeTrendBtn = document.getElementById("volumeTrendBtn");
+const setsTrendBtn = document.getElementById("setsTrendBtn");
+let trendMode = "volume";
+
 
 function loadJson(key, fallback) {
   try {
@@ -680,6 +781,7 @@ function finishWorkout() {
   saveAll();
   renderCurrentWorkout();
   renderHistory();
+  renderTrends();
   updatePreviousResult();
   showNotice("Workout saved.");
 }
@@ -764,6 +866,7 @@ window.deleteWorkout = function(workoutId) {
   workouts = workouts.filter(w => w.id !== workoutId);
   saveAll();
   renderHistory();
+  renderTrends();
   updatePreviousResult();
 };
 
@@ -778,6 +881,7 @@ window.editHistoryEntry = function(workoutId, entryId) {
   Object.assign(entry, updated);
   saveAll();
   renderHistory();
+  renderTrends();
   renderExerciseHistory(entry.exercise);
   updatePreviousResult();
   showNotice("History entry updated.");
@@ -795,6 +899,7 @@ window.deleteHistoryEntry = function(workoutId, entryId) {
 
   saveAll();
   renderHistory();
+  renderTrends();
   updatePreviousResult();
 };
 
@@ -831,6 +936,282 @@ function renderExerciseHistory(name) {
     </div>
   `).join("");
 }
+
+
+function populateTrendExercises() {
+  trendExercise.innerHTML = allExerciseNames()
+    .map(name => `<option value="${name}">${name}</option>`)
+    .join("");
+}
+
+function getCompletedExerciseEntries(name) {
+  return workouts
+    .flatMap(workout =>
+      workout.entries
+        .filter(entry => entry.exercise === name)
+        .map(entry => ({
+          ...entry,
+          workoutDate: workout.completedAt
+        }))
+    )
+    .sort((a, b) => new Date(a.workoutDate) - new Date(b.workoutDate));
+}
+
+function shortDate(value) {
+  return new Date(value).toLocaleDateString([], {
+    month: "short",
+    day: "numeric"
+  });
+}
+
+function parseRepValues(reps) {
+  return String(reps || "")
+    .split(",")
+    .map(value => Number(value.trim()))
+    .filter(value => Number.isFinite(value));
+}
+
+function findExerciseDefinitionByName(name) {
+  return Object.values(EXERCISES).flat().find(item => item.name === name);
+}
+
+function trendPalette(index) {
+  const palette = [
+    "#2563eb",
+    "#d97706",
+    "#059669",
+    "#7c3aed",
+    "#dc2626",
+    "#0891b2",
+    "#4f46e5",
+    "#ca8a04"
+  ];
+  return palette[index % palette.length];
+}
+
+function renderTrends() {
+  const name = trendExercise.value;
+  const def = findExerciseDefinitionByName(name);
+  const entries = getCompletedExerciseEntries(name);
+  const ctx = trendCanvas.getContext("2d");
+
+  ctx.clearRect(0, 0, trendCanvas.width, trendCanvas.height);
+  trendLegend.innerHTML = "";
+  trendSummary.textContent = "";
+
+  if (!def) return;
+
+  if (def.type === "duration") {
+    trendToggle.classList.add("hidden");
+    trendDescription.textContent = "Duration over time (minutes).";
+    drawLineChart(
+      entries.map(entry => ({
+        label: shortDate(entry.workoutDate),
+        value: Number(entry.duration) || 0
+      })),
+      "Minutes"
+    );
+    if (entries.length) {
+      const latest = entries[entries.length - 1];
+      trendSummary.textContent = `Latest: ${latest.duration} minutes on ${shortDate(latest.workoutDate)}.`;
+    }
+    return;
+  }
+
+  trendToggle.classList.remove("hidden");
+
+  if (trendMode === "sets") {
+    trendDescription.textContent = "Bar height shows reps for each set. Colour shows the weight used.";
+    drawSetsChart(entries);
+  } else {
+    trendDescription.textContent = "Training volume = weight × total reps for all 3 sets.";
+    drawLineChart(
+      entries.map(entry => {
+        const reps = parseRepValues(entry.reps);
+        const totalReps = reps.reduce((sum, value) => sum + value, 0);
+        return {
+          label: shortDate(entry.workoutDate),
+          value: (Number(entry.weight) || 0) * totalReps
+        };
+      }),
+      "Volume (lb)"
+    );
+    if (entries.length) {
+      const latest = entries[entries.length - 1];
+      const reps = parseRepValues(latest.reps);
+      const volume = (Number(latest.weight) || 0) * reps.reduce((a, b) => a + b, 0);
+      trendSummary.textContent = `Latest volume: ${Math.round(volume).toLocaleString()} lb on ${shortDate(latest.workoutDate)}.`;
+    }
+  }
+}
+
+function prepareCanvas(pointCount) {
+  const minWidth = Math.max(820, pointCount * 92 + 100);
+  trendCanvas.width = minWidth;
+  trendCanvas.height = 340;
+  trendCanvas.style.width = `${minWidth}px`;
+  trendCanvas.style.height = "340px";
+  return trendCanvas.getContext("2d");
+}
+
+function drawEmptyChart(ctx, message) {
+  ctx.clearRect(0, 0, trendCanvas.width, trendCanvas.height);
+  ctx.fillStyle = "#667085";
+  ctx.font = "15px system-ui";
+  ctx.textAlign = "center";
+  ctx.fillText(message, trendCanvas.width / 2, trendCanvas.height / 2);
+}
+
+function drawAxes(ctx, maxValue, labels, yTitle) {
+  const left = 58;
+  const right = trendCanvas.width - 22;
+  const top = 24;
+  const bottom = trendCanvas.height - 54;
+  const plotHeight = bottom - top;
+
+  ctx.strokeStyle = "#d0d5dd";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#667085";
+  ctx.font = "12px system-ui";
+  ctx.textAlign = "right";
+
+  const steps = 4;
+  for (let i = 0; i <= steps; i++) {
+    const value = maxValue * (i / steps);
+    const y = bottom - plotHeight * (i / steps);
+    ctx.beginPath();
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
+    ctx.stroke();
+    ctx.fillText(Math.round(value).toLocaleString(), left - 8, y + 4);
+  }
+
+  ctx.save();
+  ctx.translate(15, (top + bottom) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = "center";
+  ctx.fillText(yTitle, 0, 0);
+  ctx.restore();
+
+  return { left, right, top, bottom, plotHeight };
+}
+
+function drawLineChart(points, yTitle) {
+  const ctx = prepareCanvas(points.length);
+
+  if (!points.length) {
+    drawEmptyChart(ctx, "No completed history for this exercise yet.");
+    return;
+  }
+
+  const maxRaw = Math.max(...points.map(point => point.value), 1);
+  const maxValue = maxRaw * 1.12;
+  const area = drawAxes(ctx, maxValue, points.map(p => p.label), yTitle);
+  const plotWidth = area.right - area.left;
+  const xFor = index =>
+    points.length === 1
+      ? area.left + plotWidth / 2
+      : area.left + (plotWidth * index) / (points.length - 1);
+
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const y = area.bottom - (point.value / maxValue) * area.plotHeight;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const y = area.bottom - (point.value / maxValue) * area.plotHeight;
+
+    ctx.fillStyle = "#2563eb";
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#667085";
+    ctx.font = "12px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(point.label, x, area.bottom + 22);
+
+    ctx.fillStyle = "#1f2933";
+    ctx.font = "11px system-ui";
+    ctx.fillText(Math.round(point.value).toLocaleString(), x, y - 10);
+  });
+}
+
+function drawSetsChart(entries) {
+  const ctx = prepareCanvas(entries.length);
+
+  if (!entries.length) {
+    drawEmptyChart(ctx, "No completed history for this exercise yet.");
+    return;
+  }
+
+  const parsed = entries.map(entry => ({
+    ...entry,
+    repValues: parseRepValues(entry.reps).slice(0, 3)
+  }));
+
+  const weights = [...new Set(parsed.map(entry => Number(entry.weight) || 0))]
+    .sort((a, b) => a - b);
+  const colourByWeight = new Map(weights.map((weight, index) => [weight, trendPalette(index)]));
+
+  trendLegend.innerHTML = weights.map(weight => `
+    <span class="legend-item">
+      <span class="legend-swatch" style="background:${colourByWeight.get(weight)}"></span>
+      ${weight} lb
+    </span>
+  `).join("");
+
+  const maxRaw = Math.max(...parsed.flatMap(entry => entry.repValues), 1);
+  const maxValue = Math.max(maxRaw + 2, maxRaw * 1.12);
+  const area = drawAxes(ctx, maxValue, [], "Reps");
+  const plotWidth = area.right - area.left;
+  const groupWidth = plotWidth / parsed.length;
+  const barGap = 4;
+  const barWidth = Math.min(18, Math.max(8, (groupWidth - 18) / 3));
+
+  parsed.forEach((entry, groupIndex) => {
+    const groupCenter = area.left + groupWidth * groupIndex + groupWidth / 2;
+    const totalBarsWidth = barWidth * 3 + barGap * 2;
+    const startX = groupCenter - totalBarsWidth / 2;
+    const colour = colourByWeight.get(Number(entry.weight) || 0);
+
+    entry.repValues.forEach((reps, setIndex) => {
+      const x = startX + setIndex * (barWidth + barGap);
+      const barHeight = (reps / maxValue) * area.plotHeight;
+      const y = area.bottom - barHeight;
+
+      ctx.fillStyle = colour;
+      ctx.fillRect(x, y, barWidth, barHeight);
+
+      ctx.fillStyle = "#1f2933";
+      ctx.font = "11px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText(reps, x + barWidth / 2, y - 5);
+    });
+
+    ctx.fillStyle = "#667085";
+    ctx.font = "12px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(shortDate(entry.workoutDate), groupCenter, area.bottom + 21);
+
+    ctx.fillStyle = colour;
+    ctx.font = "11px system-ui";
+    ctx.fillText(`${entry.weight} lb`, groupCenter, area.bottom + 38);
+  });
+
+  const latest = parsed[parsed.length - 1];
+  trendSummary.textContent =
+    `Latest: ${latest.weight} lb — ${latest.repValues.join(",")} on ${shortDate(latest.workoutDate)}.`;
+}
+
 
 function exportData() {
   const payload = {
@@ -948,10 +1329,28 @@ document.getElementById("importFile").addEventListener("change", event => {
 });
 document.getElementById("deleteAllBtn").addEventListener("click", deleteAllData);
 
+trendExercise.addEventListener("change", renderTrends);
+
+volumeTrendBtn.addEventListener("click", () => {
+  trendMode = "volume";
+  volumeTrendBtn.classList.add("active");
+  setsTrendBtn.classList.remove("active");
+  renderTrends();
+});
+
+setsTrendBtn.addEventListener("click", () => {
+  trendMode = "sets";
+  setsTrendBtn.classList.add("active");
+  volumeTrendBtn.classList.remove("active");
+  renderTrends();
+});
+
 populateCategories();
 populateHistoryFilter();
+populateTrendExercises();
 renderCurrentWorkout();
 renderHistory();
+renderTrends();
 </script>
 <script>
   if ("serviceWorker" in navigator) {
