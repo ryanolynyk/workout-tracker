@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simple Workout Tracker</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --text: #1f2933;
+    --muted: #667085;
+    --border: #d0d5dd;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #b42318;
+    --danger-bg: #fee4e2;
+    --success: #067647;
+    --success-bg: #dcfae6;
+    --shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  header {
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: 1.8rem;
+  }
+
+  .subtitle {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 16px 0;
+  }
+
+  .tab {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    padding: 12px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+
+  .panel {
+    display: none;
+  }
+
+  .panel.active {
+    display: block;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid #e4e7ec;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .card h2, .card h3 {
+    margin-top: 0;
+  }
+
+  .grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .grid.two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  input, select, textarea, button {
+    font: inherit;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 12px;
+    background: white;
+    color: var(--text);
+  }
+
+  textarea {
+    min-height: 72px;
+    resize: vertical;
+  }
+
+  button {
+    border: 0;
+    border-radius: 9px;
+    padding: 11px 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-dark);
+  }
+
+  .btn-secondary {
+    background: #eef2f6;
+    color: var(--text);
+  }
+
+  .btn-danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+
+  .btn-success {
+    background: var(--success-bg);
+    color: var(--success);
+  }
+
+  .button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .previous {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #1e3a8a;
+    margin: 12px 0;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  .entry {
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+    background: #fafafa;
+  }
+
+  .entry-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .entry-title {
+    font-weight: 800;
+  }
+
+  .entry-meta {
+    color: var(--muted);
+    margin-top: 3px;
+    font-size: 0.92rem;
+  }
+
+  .workout-card {
+    border-left: 4px solid var(--primary);
+  }
+
+  .empty {
+    color: var(--muted);
+    text-align: center;
+    padding: 20px 8px;
+  }
+
+  .notice {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    display: none;
+  }
+
+  .notice.show { display: block; }
+  .notice.success { background: var(--success-bg); color: var(--success); }
+  .notice.error { background: var(--danger-bg); color: var(--danger); }
+
+  .small {
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  .history-filter {
+    margin-bottom: 12px;
+  }
+
+  .exercise-history-list {
+    margin-top: 10px;
+  }
+
+  @media (max-width: 640px) {
+    .app { padding: 12px; }
+    .grid.two { grid-template-columns: 1fr; }
+    .entry-top { flex-direction: column; }
+    .button-row button { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Workout Tracker</h1>
+    <p class="subtitle">Simple strength and activity logging stored in your browser.</p>
+  </header>
+
+  <div id="notice" class="notice"></div>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="current">Current Workout</button>
+    <button class="tab" data-tab="history">History</button>
+    <button class="tab" data-tab="data">Data</button>
+  </nav>
+
+  <section id="current" class="panel active">
+    <div class="card">
+      <h2>Add Exercise</h2>
+
+      <div class="grid two">
+        <div>
+          <label for="category">Category</label>
+          <select id="category"></select>
+        </div>
+        <div>
+          <label for="exercise">Exercise</label>
+          <select id="exercise"></select>
+        </div>
+      </div>
+
+      <div id="previousResult" class="previous hidden"></div>
+
+      <div id="strengthFields" class="grid two">
+        <div>
+          <label for="weight">Weight (lb)</label>
+          <input id="weight" type="number" min="0" step="0.5" placeholder="40" />
+        </div>
+        <div>
+          <label for="reps">Reps for 3 sets</label>
+          <input id="reps" type="text" placeholder="8,8,6" />
+        </div>
+      </div>
+
+      <div id="durationFields" class="hidden">
+        <label for="duration">Duration (minutes)</label>
+        <input id="duration" type="number" min="1" step="1" placeholder="30" />
+      </div>
+
+      <div>
+        <label for="notes">Notes (optional)</label>
+        <textarea id="notes" placeholder="How did it feel?"></textarea>
+      </div>
+
+      <div class="button-row">
+        <button id="addEntryBtn" class="btn-primary">Add to Workout</button>
+        <button id="viewExerciseHistoryBtn" class="btn-secondary">View Exercise History</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Current Workout</h2>
+      <div id="currentWorkoutList"></div>
+      <div class="button-row">
+        <button id="finishWorkoutBtn" class="btn-success">Finish Workout</button>
+        <button id="clearCurrentBtn" class="btn-danger">Clear Current Workout</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="history" class="panel">
+    <div class="card">
+      <h2>Workout History</h2>
+      <div class="history-filter">
+        <label for="historyExerciseFilter">Filter by exercise</label>
+        <select id="historyExerciseFilter"></select>
+      </div>
+      <div id="workoutHistoryList"></div>
+    </div>
+
+    <div id="exerciseHistoryCard" class="card hidden">
+      <h2 id="exerciseHistoryTitle">Exercise History</h2>
+      <div id="exerciseHistoryList" class="exercise-history-list"></div>
+    </div>
+  </section>
+
+  <section id="data" class="panel">
+    <div class="card">
+      <h2>Backup and Restore</h2>
+      <p class="small">Export your complete history as a JSON file. Importing a backup replaces the data currently stored in this browser.</p>
+      <div class="button-row">
+        <button id="exportBtn" class="btn-primary">Export Data</button>
+        <button id="importBtn" class="btn-secondary">Import Data</button>
+        <input id="importFile" class="hidden" type="file" accept=".json,application/json" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Reset</h2>
+      <p class="small">This permanently deletes all workouts stored in this browser.</p>
+      <button id="deleteAllBtn" class="btn-danger">Delete All Data</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const EXERCISES = {
+  Push: [
+    { name: "Dumbbell Press", type: "strength" },
+    { name: "Incline Dumbbell Press", type: "strength" },
+    { name: "Lateral Raises", type: "strength" },
+    { name: "Overhead Press", type: "strength" }
+  ],
+  Pull: [
+    { name: "Dumbbell Rows", type: "strength" },
+    { name: "Lat Pulldowns", type: "strength" },
+    { name: "Biceps Curls", type: "strength" },
+    { name: "Seated Cable Rows", type: "strength" }
+  ],
+  Hinge: [
+    { name: "RDLs", type: "strength" },
+    { name: "Hamstring Curls", type: "strength" },
+    { name: "Hip Thrusts", type: "strength" },
+    { name: "Back Extensions", type: "strength" }
+  ],
+  Legs: [
+    { name: "Squats", type: "strength" },
+    { name: "Leg Press", type: "strength" },
+    { name: "Lunges", type: "strength" },
+    { name: "Calf Raises", type: "strength" }
+  ],
+  Cardio: [
+    { name: "Running", type: "duration" },
+    { name: "Skipping", type: "duration" },
+    { name: "Cycling", type: "duration" },
+    { name: "Walking", type: "duration" }
+  ]
+};
+
+const STORAGE_KEY = "simpleWorkoutTrackerData_v1";
+const CURRENT_KEY = "simpleWorkoutTrackerCurrent_v1";
+
+let workouts = loadJson(STORAGE_KEY, []);
+let currentWorkout = loadJson(CURRENT_KEY, []);
+
+const categoryEl = document.getElementById("category");
+const exerciseEl = document.getElementById("exercise");
+const weightEl = document.getElementById("weight");
+const repsEl = document.getElementById("reps");
+const durationEl = document.getElementById("duration");
+const notesEl = document.getElementById("notes");
+const strengthFields = document.getElementById("strengthFields");
+const durationFields = document.getElementById("durationFields");
+const previousResult = document.getElementById("previousResult");
+const currentWorkoutList = document.getElementById("currentWorkoutList");
+const workoutHistoryList = document.getElementById("workoutHistoryList");
+const historyExerciseFilter = document.getElementById("historyExerciseFilter");
+const exerciseHistoryCard = document.getElementById("exerciseHistoryCard");
+const exerciseHistoryTitle = document.getElementById("exerciseHistoryTitle");
+const exerciseHistoryList = document.getElementById("exerciseHistoryList");
+
+function loadJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveAll() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
+  localStorage.setItem(CURRENT_KEY, JSON.stringify(currentWorkout));
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function showNotice(message, type = "success") {
+  const notice = document.getElementById("notice");
+  notice.textContent = message;
+  notice.className = `notice show ${type}`;
+  setTimeout(() => notice.className = "notice", 3000);
+}
+
+function allExerciseNames() {
+  return Object.values(EXERCISES).flat().map(x => x.name).sort();
+}
+
+function populateCategories() {
+  categoryEl.innerHTML = Object.keys(EXERCISES)
+    .map(category => `<option value="${category}">${category}</option>`)
+    .join("");
+  populateExercises();
+}
+
+function populateExercises() {
+  const category = categoryEl.value;
+  exerciseEl.innerHTML = EXERCISES[category]
+    .map(item => `<option value="${item.name}">${item.name}</option>`)
+    .join("");
+  updateInputMode();
+  updatePreviousResult();
+}
+
+function selectedExerciseDefinition() {
+  return EXERCISES[categoryEl.value].find(x => x.name === exerciseEl.value);
+}
+
+function updateInputMode() {
+  const def = selectedExerciseDefinition();
+  const isDuration = def && def.type === "duration";
+  strengthFields.classList.toggle("hidden", isDuration);
+  durationFields.classList.toggle("hidden", !isDuration);
+}
+
+function getExerciseEntries(name) {
+  const completed = workouts.flatMap(workout =>
+    workout.entries.map(entry => ({
+      ...entry,
+      workoutDate: workout.completedAt,
+      workoutId: workout.id
+    }))
+  );
+  const current = currentWorkout
+    .filter(entry => entry.exercise === name)
+    .map(entry => ({ ...entry, workoutDate: null, workoutId: null }));
+  return [...completed, ...current]
+    .filter(entry => entry.exercise === name)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+function updatePreviousResult() {
+  const name = exerciseEl.value;
+  const entries = getExerciseEntries(name);
+  const previous = entries[0];
+
+  if (!previous) {
+    previousResult.classList.add("hidden");
+    previousResult.textContent = "";
+    return;
+  }
+
+  const detail = previous.type === "duration"
+    ? `${previous.duration} minutes`
+    : `${previous.weight} lb — ${previous.reps}`;
+
+  previousResult.innerHTML = `<strong>Previous:</strong> ${detail}<br><span class="small">${formatDate(previous.createdAt)}</span>`;
+  previousResult.classList.remove("hidden");
+}
+
+function validateReps(value) {
+  return /^\s*\d+\s*,\s*\d+\s*,\s*\d+\s*$/.test(value);
+}
+
+function addEntry() {
+  const def = selectedExerciseDefinition();
+  if (!def) return;
+
+  const entry = {
+    id: uid(),
+    exercise: def.name,
+    category: categoryEl.value,
+    type: def.type,
+    notes: notesEl.value.trim(),
+    createdAt: new Date().toISOString()
+  };
+
+  if (def.type === "strength") {
+    const weight = Number(weightEl.value);
+    const reps = repsEl.value.trim();
+
+    if (!Number.isFinite(weight) || weight < 0) {
+      showNotice("Enter a valid weight.", "error");
+      return;
+    }
+
+    if (!validateReps(reps)) {
+      showNotice('Enter reps as three comma-separated numbers, such as "8,8,6".', "error");
+      return;
+    }
+
+    entry.weight = weight;
+    entry.reps = reps.replace(/\s+/g, "");
+  } else {
+    const duration = Number(durationEl.value);
+    if (!Number.isInteger(duration) || duration < 1) {
+      showNotice("Enter duration as a whole number of minutes.", "error");
+      return;
+    }
+    entry.duration = duration;
+  }
+
+  currentWorkout.push(entry);
+  saveAll();
+  clearEntryForm();
+  renderCurrentWorkout();
+  updatePreviousResult();
+  showNotice("Exercise added.");
+}
+
+function clearEntryForm() {
+  weightEl.value = "";
+  repsEl.value = "";
+  durationEl.value = "";
+  notesEl.value = "";
+}
+
+function renderCurrentWorkout() {
+  if (!currentWorkout.length) {
+    currentWorkoutList.innerHTML = `<div class="empty">No exercises added yet.</div>`;
+    return;
+  }
+
+  currentWorkoutList.innerHTML = currentWorkout.map(entry => `
+    <div class="entry">
+      <div class="entry-top">
+        <div>
+          <div class="entry-title">${escapeHtml(entry.exercise)}</div>
+          <div class="entry-meta">${entry.type === "duration"
+            ? `${entry.duration} minutes`
+            : `${entry.weight} lb — ${escapeHtml(entry.reps)}`
+          }</div>
+          ${entry.notes ? `<div class="entry-meta">${escapeHtml(entry.notes)}</div>` : ""}
+        </div>
+        <div class="button-row">
+          <button class="btn-secondary" onclick="editCurrentEntry('${entry.id}')">Edit</button>
+          <button class="btn-danger" onclick="deleteCurrentEntry('${entry.id}')">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+window.editCurrentEntry = function(id) {
+  const entry = currentWorkout.find(x => x.id === id);
+  if (!entry) return;
+
+  const updated = promptForEntry(entry);
+  if (!updated) return;
+
+  Object.assign(entry, updated);
+  saveAll();
+  renderCurrentWorkout();
+  updatePreviousResult();
+  showNotice("Entry updated.");
+};
+
+window.deleteCurrentEntry = function(id) {
+  if (!confirm("Delete this exercise entry?")) return;
+  currentWorkout = currentWorkout.filter(x => x.id !== id);
+  saveAll();
+  renderCurrentWorkout();
+  updatePreviousResult();
+};
+
+function promptForEntry(entry) {
+  if (entry.type === "duration") {
+    const duration = prompt("Duration in minutes:", entry.duration);
+    if (duration === null) return null;
+    const parsed = Number(duration);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      showNotice("Duration must be a whole number of minutes.", "error");
+      return null;
+    }
+    const notes = prompt("Notes:", entry.notes || "");
+    if (notes === null) return null;
+    return { duration: parsed, notes: notes.trim() };
+  }
+
+  const weight = prompt("Weight in pounds:", entry.weight);
+  if (weight === null) return null;
+  const parsedWeight = Number(weight);
+  if (!Number.isFinite(parsedWeight) || parsedWeight < 0) {
+    showNotice("Enter a valid weight.", "error");
+    return null;
+  }
+
+  const reps = prompt('Reps for 3 sets, such as "8,8,6":', entry.reps);
+  if (reps === null) return null;
+  if (!validateReps(reps)) {
+    showNotice('Enter reps as three comma-separated numbers.', "error");
+    return null;
+  }
+
+  const notes = prompt("Notes:", entry.notes || "");
+  if (notes === null) return null;
+
+  return {
+    weight: parsedWeight,
+    reps: reps.replace(/\s+/g, ""),
+    notes: notes.trim()
+  };
+}
+
+function finishWorkout() {
+  if (!currentWorkout.length) {
+    showNotice("Add at least one exercise first.", "error");
+    return;
+  }
+
+  workouts.unshift({
+    id: uid(),
+    completedAt: new Date().toISOString(),
+    entries: currentWorkout.map(entry => ({ ...entry }))
+  });
+
+  currentWorkout = [];
+  saveAll();
+  renderCurrentWorkout();
+  renderHistory();
+  updatePreviousResult();
+  showNotice("Workout saved.");
+}
+
+function clearCurrentWorkout() {
+  if (!currentWorkout.length) return;
+  if (!confirm("Clear the current workout?")) return;
+  currentWorkout = [];
+  saveAll();
+  renderCurrentWorkout();
+  updatePreviousResult();
+}
+
+function renderHistory() {
+  const filter = historyExerciseFilter.value || "all";
+  const filtered = filter === "all"
+    ? workouts
+    : workouts.filter(workout => workout.entries.some(entry => entry.exercise === filter));
+
+  if (!filtered.length) {
+    workoutHistoryList.innerHTML = `<div class="empty">No matching workout history.</div>`;
+    return;
+  }
+
+  workoutHistoryList.innerHTML = filtered.map(workout => `
+    <div class="card workout-card">
+      <div class="entry-top">
+        <div>
+          <h3>${formatDate(workout.completedAt)}</h3>
+          <div class="small">${workout.entries.length} exercise${workout.entries.length === 1 ? "" : "s"}</div>
+        </div>
+        <div class="button-row">
+          <button class="btn-secondary" onclick="editWorkoutDate('${workout.id}')">Edit Date</button>
+          <button class="btn-danger" onclick="deleteWorkout('${workout.id}')">Delete Workout</button>
+        </div>
+      </div>
+      ${workout.entries
+        .filter(entry => filter === "all" || entry.exercise === filter)
+        .map(entry => `
+          <div class="entry">
+            <div class="entry-top">
+              <div>
+                <div class="entry-title">${escapeHtml(entry.exercise)}</div>
+                <div class="entry-meta">${entry.type === "duration"
+                  ? `${entry.duration} minutes`
+                  : `${entry.weight} lb — ${escapeHtml(entry.reps)}`
+                }</div>
+                ${entry.notes ? `<div class="entry-meta">${escapeHtml(entry.notes)}</div>` : ""}
+              </div>
+              <div class="button-row">
+                <button class="btn-secondary" onclick="editHistoryEntry('${workout.id}','${entry.id}')">Edit</button>
+                <button class="btn-danger" onclick="deleteHistoryEntry('${workout.id}','${entry.id}')">Delete</button>
+              </div>
+            </div>
+          </div>
+        `).join("")}
+    </div>
+  `).join("");
+}
+
+window.editWorkoutDate = function(workoutId) {
+  const workout = workouts.find(w => w.id === workoutId);
+  if (!workout) return;
+
+  const local = toLocalInputValue(workout.completedAt);
+  const value = prompt("Workout date and time (YYYY-MM-DDTHH:MM):", local);
+  if (value === null) return;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    showNotice("Enter a valid date and time.", "error");
+    return;
+  }
+
+  workout.completedAt = parsed.toISOString();
+  saveAll();
+  renderHistory();
+};
+
+window.deleteWorkout = function(workoutId) {
+  if (!confirm("Delete this complete workout?")) return;
+  workouts = workouts.filter(w => w.id !== workoutId);
+  saveAll();
+  renderHistory();
+  updatePreviousResult();
+};
+
+window.editHistoryEntry = function(workoutId, entryId) {
+  const workout = workouts.find(w => w.id === workoutId);
+  const entry = workout?.entries.find(e => e.id === entryId);
+  if (!entry) return;
+
+  const updated = promptForEntry(entry);
+  if (!updated) return;
+
+  Object.assign(entry, updated);
+  saveAll();
+  renderHistory();
+  renderExerciseHistory(entry.exercise);
+  updatePreviousResult();
+  showNotice("History entry updated.");
+};
+
+window.deleteHistoryEntry = function(workoutId, entryId) {
+  if (!confirm("Delete this exercise entry?")) return;
+  const workout = workouts.find(w => w.id === workoutId);
+  if (!workout) return;
+
+  workout.entries = workout.entries.filter(e => e.id !== entryId);
+  if (!workout.entries.length) {
+    workouts = workouts.filter(w => w.id !== workoutId);
+  }
+
+  saveAll();
+  renderHistory();
+  updatePreviousResult();
+};
+
+function populateHistoryFilter() {
+  historyExerciseFilter.innerHTML = `
+    <option value="all">All exercises</option>
+    ${allExerciseNames().map(name => `<option value="${name}">${name}</option>`).join("")}
+  `;
+}
+
+function renderExerciseHistory(name) {
+  const entries = workouts
+    .flatMap(workout => workout.entries
+      .filter(entry => entry.exercise === name)
+      .map(entry => ({ ...entry, workoutDate: workout.completedAt })))
+    .sort((a, b) => new Date(b.workoutDate) - new Date(a.workoutDate));
+
+  exerciseHistoryTitle.textContent = `${name} History`;
+  exerciseHistoryCard.classList.remove("hidden");
+
+  if (!entries.length) {
+    exerciseHistoryList.innerHTML = `<div class="empty">No completed entries for this exercise.</div>`;
+    return;
+  }
+
+  exerciseHistoryList.innerHTML = entries.map(entry => `
+    <div class="entry">
+      <div class="entry-title">${formatDate(entry.workoutDate)}</div>
+      <div class="entry-meta">${entry.type === "duration"
+        ? `${entry.duration} minutes`
+        : `${entry.weight} lb — ${escapeHtml(entry.reps)}`
+      }</div>
+      ${entry.notes ? `<div class="entry-meta">${escapeHtml(entry.notes)}</div>` : ""}
+    </div>
+  `).join("");
+}
+
+function exportData() {
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    workouts,
+    currentWorkout
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `workout-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data.workouts) || !Array.isArray(data.currentWorkout)) {
+        throw new Error("Invalid backup");
+      }
+
+      if (!confirm("Replace all current data with this backup?")) return;
+
+      workouts = data.workouts;
+      currentWorkout = data.currentWorkout;
+      saveAll();
+      renderCurrentWorkout();
+      renderHistory();
+      updatePreviousResult();
+      showNotice("Backup imported.");
+    } catch {
+      showNotice("That file is not a valid workout backup.", "error");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function deleteAllData() {
+  if (!confirm("Permanently delete all workout data?")) return;
+  if (!confirm("This cannot be undone. Delete everything?")) return;
+  workouts = [];
+  currentWorkout = [];
+  saveAll();
+  renderCurrentWorkout();
+  renderHistory();
+  exerciseHistoryCard.classList.add("hidden");
+  updatePreviousResult();
+  showNotice("All data deleted.");
+}
+
+function formatDate(value) {
+  return new Date(value).toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function toLocalInputValue(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab).classList.add("active");
+  });
+});
+
+categoryEl.addEventListener("change", populateExercises);
+exerciseEl.addEventListener("change", () => {
+  updateInputMode();
+  updatePreviousResult();
+});
+historyExerciseFilter.addEventListener("change", renderHistory);
+
+document.getElementById("addEntryBtn").addEventListener("click", addEntry);
+document.getElementById("finishWorkoutBtn").addEventListener("click", finishWorkout);
+document.getElementById("clearCurrentBtn").addEventListener("click", clearCurrentWorkout);
+
+document.getElementById("viewExerciseHistoryBtn").addEventListener("click", () => {
+  renderExerciseHistory(exerciseEl.value);
+  document.querySelector('[data-tab="history"]').click();
+});
+
+document.getElementById("exportBtn").addEventListener("click", exportData);
+document.getElementById("importBtn").addEventListener("click", () => {
+  document.getElementById("importFile").click();
+});
+document.getElementById("importFile").addEventListener("change", event => {
+  const file = event.target.files[0];
+  if (file) importData(file);
+  event.target.value = "";
+});
+document.getElementById("deleteAllBtn").addEventListener("click", deleteAllData);
+
+populateCategories();
+populateHistoryFilter();
+renderCurrentWorkout();
+renderHistory();
+</script>
+</body>
+</html>
