@@ -1,0 +1,10 @@
+{
+  "name": "Workout Tracker",
+  "short_name": "Workout",
+  "start_url": "/workout-tracker/",
+  "scope": "/workout-tracker/",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#2563eb",
+  "description": "A simple workout tracker for strength and cardio sessions."
+}
