@@ -539,10 +539,18 @@
           </div>
         </div>
         <div>
-          <label>Weight units</label>
+          <label>Exercise weight units</label>
           <div class="segmented">
             <button id="lbUnitBtn" class="btn-secondary" type="button">lb</button>
             <button id="kgUnitBtn" class="btn-secondary" type="button">kg</button>
+          </div>
+        </div>
+
+        <div>
+          <label>Body weight units</label>
+          <div class="segmented">
+            <button id="bodyLbUnitBtn" class="btn-secondary" type="button">lb</button>
+            <button id="bodyKgUnitBtn" class="btn-secondary" type="button">kg</button>
           </div>
         </div>
       </div>
@@ -639,11 +647,12 @@ const CARDIO_CONFIG = {
 let workouts = loadJson(STORAGE_KEY, []);
 let currentWorkout = loadJson(CURRENT_KEY, []);
 let bodyWeights = loadJson(BODY_WEIGHT_KEY, []);
-let settings = loadJson(SETTINGS_KEY, { theme: "light", weightUnit: "lb" });
+let settings = loadJson(SETTINGS_KEY, { theme: "light", weightUnit: "lb", bodyWeightUnit: "lb" });
 
 if (!settings || typeof settings !== "object") settings = {};
 settings.theme = settings.theme === "dark" ? "dark" : "light";
 settings.weightUnit = settings.weightUnit === "kg" ? "kg" : "lb";
+settings.bodyWeightUnit = settings.bodyWeightUnit === "kg" ? "kg" : "lb";
 
 const categoryEl = document.getElementById("category");
 const exerciseEl = document.getElementById("exercise");
@@ -686,6 +695,8 @@ const lightThemeBtn = document.getElementById("lightThemeBtn");
 const darkThemeBtn = document.getElementById("darkThemeBtn");
 const lbUnitBtn = document.getElementById("lbUnitBtn");
 const kgUnitBtn = document.getElementById("kgUnitBtn");
+const bodyLbUnitBtn = document.getElementById("bodyLbUnitBtn");
+const bodyKgUnitBtn = document.getElementById("bodyKgUnitBtn");
 let trendMode = "volume";
 
 
@@ -715,6 +726,22 @@ function inputWeightToLb(value) {
   return settings.weightUnit === "kg" ? number * LB_PER_KG : number;
 }
 
+function displayBodyWeightFromLb(lb) {
+  const value = Number(lb) || 0;
+  return settings.bodyWeightUnit === "kg" ? value / LB_PER_KG : value;
+}
+
+function inputBodyWeightToLb(value) {
+  const number = Number(value);
+  return settings.bodyWeightUnit === "kg" ? number * LB_PER_KG : number;
+}
+
+function formatBodyWeight(lb, decimals = 1) {
+  const value = displayBodyWeightFromLb(lb);
+  const rounded = Math.round(value * (10 ** decimals)) / (10 ** decimals);
+  return `${rounded} ${settings.bodyWeightUnit}`;
+}
+
 function formatWeight(lb, decimals = 1) {
   const value = displayWeightFromLb(lb);
   const factor = 10 ** decimals;
@@ -728,8 +755,10 @@ function applySettings() {
   darkThemeBtn.classList.toggle("active", settings.theme === "dark");
   lbUnitBtn.classList.toggle("active", settings.weightUnit === "lb");
   kgUnitBtn.classList.toggle("active", settings.weightUnit === "kg");
+  bodyLbUnitBtn.classList.toggle("active", settings.bodyWeightUnit === "lb");
+  bodyKgUnitBtn.classList.toggle("active", settings.bodyWeightUnit === "kg");
   weightLabel.textContent = `Weight (${settings.weightUnit})`;
-  bodyWeightLabel.textContent = `Weight (${settings.weightUnit})`;
+  bodyWeightLabel.textContent = `Weight (${settings.bodyWeightUnit})`;
   renderCurrentWorkout();
   renderHistory();
   updatePreviousResult();
@@ -1261,11 +1290,11 @@ function renderTrends() {
   if (name === "__body_weight__") {
     trendToggle.classList.add("hidden");
     cardioMetricWrap.classList.add("hidden");
-    trendDescription.textContent = `Body weight over time (${settings.weightUnit}).`;
+    trendDescription.textContent = `Body weight over time (${settings.bodyWeightUnit}).`;
     const points = [...bodyWeights]
       .sort((a, b) => a.date.localeCompare(b.date))
-      .map(entry => ({ label: shortDate(entry.date + "T12:00:00"), value: displayWeightFromLb(entry.weightLb) }));
-    drawLineChart(points, `Weight (${settings.weightUnit})`, 1);
+      .map(entry => ({ label: shortDate(entry.date + "T12:00:00"), value: displayBodyWeightFromLb(entry.weightLb) }));
+    drawLineChart(points, `Weight (${settings.bodyWeightUnit})`, 1);
     return;
   }
 
@@ -1516,7 +1545,7 @@ function saveBodyWeight() {
   if (!date) { showNotice("Choose a date.", "error"); return; }
   if (!Number.isFinite(entered) || entered <= 0) { showNotice("Enter a valid weight.", "error"); return; }
 
-  const weightLb = inputWeightToLb(entered);
+  const weightLb = inputBodyWeightToLb(entered);
   const existing = bodyWeights.find(entry => entry.date === date);
   if (existing) existing.weightLb = weightLb;
   else bodyWeights.push({ id: uid(), date, weightLb });
@@ -1540,7 +1569,7 @@ function renderBodyWeights() {
       <div class="entry-top">
         <div>
           <div class="entry-title">${new Date(entry.date + "T12:00:00").toLocaleDateString()}</div>
-          <div class="entry-meta">${formatWeight(entry.weightLb)}</div>
+          <div class="entry-meta">${formatBodyWeight(entry.weightLb)}</div>
         </div>
         <div class="button-row">
           <button class="btn-secondary" onclick="editBodyWeight('${entry.id}')">Edit</button>
@@ -1553,12 +1582,12 @@ function renderBodyWeights() {
 window.editBodyWeight = function(id) {
   const entry = bodyWeights.find(item => item.id === id);
   if (!entry) return;
-  const shown = displayWeightFromLb(entry.weightLb);
-  const value = prompt(`Weight in ${settings.weightUnit}:`, Math.round(shown * 10) / 10);
+  const shown = displayBodyWeightFromLb(entry.weightLb);
+  const value = prompt(`Weight in ${settings.bodyWeightUnit}:`, Math.round(shown * 10) / 10);
   if (value === null) return;
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) { showNotice("Enter a valid weight.", "error"); return; }
-  entry.weightLb = inputWeightToLb(parsed);
+  entry.weightLb = inputBodyWeightToLb(parsed);
   saveAll(); renderBodyWeights(); renderTrends();
 };
 
@@ -1604,7 +1633,8 @@ function importData(file) {
       if (data.settings && typeof data.settings === "object") {
         settings = {
           theme: data.settings.theme === "dark" ? "dark" : "light",
-          weightUnit: data.settings.weightUnit === "kg" ? "kg" : "lb"
+          weightUnit: data.settings.weightUnit === "kg" ? "kg" : "lb",
+          bodyWeightUnit: data.settings.bodyWeightUnit === "kg" ? "kg" : "lb"
         };
       }
       saveAll();
@@ -1707,6 +1737,19 @@ lightThemeBtn.addEventListener("click", () => { settings.theme = "light"; saveAl
 darkThemeBtn.addEventListener("click", () => { settings.theme = "dark"; saveAll(); applySettings(); });
 lbUnitBtn.addEventListener("click", () => { settings.weightUnit = "lb"; saveAll(); applySettings(); });
 kgUnitBtn.addEventListener("click", () => { settings.weightUnit = "kg"; saveAll(); applySettings(); });
+
+bodyLbUnitBtn.addEventListener("click", () => {
+  settings.bodyWeightUnit = "lb";
+  saveAll();
+  applySettings();
+});
+
+bodyKgUnitBtn.addEventListener("click", () => {
+  settings.bodyWeightUnit = "kg";
+  saveAll();
+  applySettings();
+});
+
 
 volumeTrendBtn.addEventListener("click", () => {
   trendMode = "volume";
