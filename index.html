@@ -21,6 +21,69 @@
     --shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
   }
 
+
+  html[data-theme="dark"] {
+    --bg: #111827;
+    --panel: #1f2937;
+    --text: #f3f4f6;
+    --muted: #aeb8c6;
+    --border: #475467;
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --danger: #fda29b;
+    --danger-bg: #55160c;
+    --success: #75e0a7;
+    --success-bg: #083a2a;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  }
+
+  html[data-theme="dark"] .card,
+  html[data-theme="dark"] .entry,
+  html[data-theme="dark"] .chart-wrap {
+    border-color: #344054;
+  }
+
+  html[data-theme="dark"] .entry { background: #182230; }
+
+  html[data-theme="dark"] input,
+  html[data-theme="dark"] select,
+  html[data-theme="dark"] textarea {
+    background: #111827;
+    color: var(--text);
+  }
+
+  html[data-theme="dark"] .btn-secondary {
+    background: #344054;
+    color: var(--text);
+  }
+
+  html[data-theme="dark"] .previous {
+    background: #102a56;
+    border-color: #315ea8;
+    color: #dbeafe;
+  }
+
+  html[data-theme="dark"] .chart-wrap { background: #111827; }
+
+  .settings-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .segmented { display: flex; gap: 6px; }
+  .segmented button { flex: 1; }
+  .segmented button.active { background: var(--primary); color: white; }
+  .cardio-extra { margin-top: 12px; }
+  .body-weight-list { margin-top: 12px; }
+
+  .weight-entry-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+  }
+
   * { box-sizing: border-box; }
 
   body {
@@ -303,6 +366,8 @@
 
   @media (max-width: 640px) {
     .trend-controls { grid-template-columns: 1fr; }
+    .settings-row { grid-template-columns: 1fr; }
+    .weight-entry-row { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 640px) {
@@ -348,7 +413,7 @@
 
       <div id="strengthFields" class="grid two">
         <div>
-          <label for="weight">Weight (lb)</label>
+          <label id="weightLabel" for="weight">Weight (lb)</label>
           <input id="weight" type="number" min="0" step="0.5" placeholder="40" />
         </div>
         <div>
@@ -360,6 +425,17 @@
       <div id="durationFields" class="hidden">
         <label for="duration">Duration (minutes)</label>
         <input id="duration" type="number" min="1" step="1" placeholder="30" />
+
+        <div id="cardioExtraFields" class="cardio-extra grid two hidden">
+          <div id="distanceField" class="hidden">
+            <label id="distanceLabel" for="distance">Distance</label>
+            <input id="distance" type="number" min="0" step="0.01" />
+          </div>
+          <div id="elevationField" class="hidden">
+            <label for="elevation">Elevation gain (m)</label>
+            <input id="elevation" type="number" min="0" step="1" placeholder="Optional" />
+          </div>
+        </div>
       </div>
 
       <div>
@@ -414,6 +490,11 @@
           <button id="volumeTrendBtn" class="btn-secondary active" type="button">Volume</button>
           <button id="setsTrendBtn" class="btn-secondary" type="button">Sets</button>
         </div>
+
+        <div id="cardioMetricWrap" class="hidden">
+          <label for="cardioTrendMetric">Metric</label>
+          <select id="cardioTrendMetric"></select>
+        </div>
       </div>
 
       <div id="trendDescription" class="small"></div>
@@ -425,9 +506,48 @@
       <div id="trendLegend" class="chart-legend"></div>
       <div id="trendSummary" class="trend-summary small"></div>
     </div>
+
+    <div class="card">
+      <h2>Body Weight</h2>
+      <p class="small">Optional daily log. The trend shows only the measurements you enter.</p>
+
+      <div class="weight-entry-row">
+        <div>
+          <label for="bodyWeightDate">Date</label>
+          <input id="bodyWeightDate" type="date" />
+        </div>
+        <div>
+          <label id="bodyWeightLabel" for="bodyWeightInput">Weight (lb)</label>
+          <input id="bodyWeightInput" type="number" min="0" step="0.1" />
+        </div>
+        <button id="saveBodyWeightBtn" class="btn-primary" type="button">Save</button>
+      </div>
+
+      <div id="bodyWeightList" class="body-weight-list"></div>
+    </div>
   </section>
 
   <section id="data" class="panel">
+    <div class="card">
+      <h2>Settings</h2>
+      <div class="settings-row">
+        <div>
+          <label>Colour scheme</label>
+          <div class="segmented">
+            <button id="lightThemeBtn" class="btn-secondary" type="button">Day</button>
+            <button id="darkThemeBtn" class="btn-secondary" type="button">Night</button>
+          </div>
+        </div>
+        <div>
+          <label>Weight units</label>
+          <div class="segmented">
+            <button id="lbUnitBtn" class="btn-secondary" type="button">lb</button>
+            <button id="kgUnitBtn" class="btn-secondary" type="button">kg</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Backup and Restore</h2>
       <p class="small">Export your complete history as a JSON file. Importing a backup replaces the data currently stored in this browser.</p>
@@ -500,15 +620,43 @@ const EXERCISES = {
 
 const STORAGE_KEY = "simpleWorkoutTrackerData_v1";
 const CURRENT_KEY = "simpleWorkoutTrackerCurrent_v1";
+const BODY_WEIGHT_KEY = "simpleWorkoutTrackerBodyWeight_v1";
+const SETTINGS_KEY = "simpleWorkoutTrackerSettings_v1";
+const LB_PER_KG = 2.2046226218;
+
+const CARDIO_CONFIG = {
+  "Cycling": { distanceUnit: "km", elevation: true },
+  "Hiking": { distanceUnit: "km", elevation: true },
+  "Incline Treadmill": { distanceUnit: "km", elevation: true },
+  "Running": { distanceUnit: "km", elevation: true, distanceRequired: true },
+  "Skipping": {},
+  "Stair Climber": {},
+  "Swimming": { distanceUnit: "m" },
+  "Treadmill": { distanceUnit: "km" },
+  "Walking": { distanceUnit: "km", elevation: true }
+};
 
 let workouts = loadJson(STORAGE_KEY, []);
 let currentWorkout = loadJson(CURRENT_KEY, []);
+let bodyWeights = loadJson(BODY_WEIGHT_KEY, []);
+let settings = loadJson(SETTINGS_KEY, { theme: "light", weightUnit: "lb" });
+
+if (!settings || typeof settings !== "object") settings = {};
+settings.theme = settings.theme === "dark" ? "dark" : "light";
+settings.weightUnit = settings.weightUnit === "kg" ? "kg" : "lb";
 
 const categoryEl = document.getElementById("category");
 const exerciseEl = document.getElementById("exercise");
 const weightEl = document.getElementById("weight");
 const repsEl = document.getElementById("reps");
 const durationEl = document.getElementById("duration");
+const distanceEl = document.getElementById("distance");
+const elevationEl = document.getElementById("elevation");
+const cardioExtraFields = document.getElementById("cardioExtraFields");
+const distanceField = document.getElementById("distanceField");
+const elevationField = document.getElementById("elevationField");
+const distanceLabel = document.getElementById("distanceLabel");
+const weightLabel = document.getElementById("weightLabel");
 const notesEl = document.getElementById("notes");
 const strengthFields = document.getElementById("strengthFields");
 const durationFields = document.getElementById("durationFields");
@@ -527,6 +675,17 @@ const trendDescription = document.getElementById("trendDescription");
 const trendToggle = document.getElementById("trendToggle");
 const volumeTrendBtn = document.getElementById("volumeTrendBtn");
 const setsTrendBtn = document.getElementById("setsTrendBtn");
+const cardioMetricWrap = document.getElementById("cardioMetricWrap");
+const cardioTrendMetric = document.getElementById("cardioTrendMetric");
+const bodyWeightDate = document.getElementById("bodyWeightDate");
+const bodyWeightInput = document.getElementById("bodyWeightInput");
+const bodyWeightLabel = document.getElementById("bodyWeightLabel");
+const bodyWeightList = document.getElementById("bodyWeightList");
+const saveBodyWeightBtn = document.getElementById("saveBodyWeightBtn");
+const lightThemeBtn = document.getElementById("lightThemeBtn");
+const darkThemeBtn = document.getElementById("darkThemeBtn");
+const lbUnitBtn = document.getElementById("lbUnitBtn");
+const kgUnitBtn = document.getElementById("kgUnitBtn");
 let trendMode = "volume";
 
 
@@ -542,6 +701,40 @@ function loadJson(key, fallback) {
 function saveAll() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
   localStorage.setItem(CURRENT_KEY, JSON.stringify(currentWorkout));
+  localStorage.setItem(BODY_WEIGHT_KEY, JSON.stringify(bodyWeights));
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function displayWeightFromLb(lb) {
+  const value = Number(lb) || 0;
+  return settings.weightUnit === "kg" ? value / LB_PER_KG : value;
+}
+
+function inputWeightToLb(value) {
+  const number = Number(value);
+  return settings.weightUnit === "kg" ? number * LB_PER_KG : number;
+}
+
+function formatWeight(lb, decimals = 1) {
+  const value = displayWeightFromLb(lb);
+  const factor = 10 ** decimals;
+  const rounded = Math.round(value * factor) / factor;
+  return `${rounded} ${settings.weightUnit}`;
+}
+
+function applySettings() {
+  document.documentElement.dataset.theme = settings.theme;
+  lightThemeBtn.classList.toggle("active", settings.theme === "light");
+  darkThemeBtn.classList.toggle("active", settings.theme === "dark");
+  lbUnitBtn.classList.toggle("active", settings.weightUnit === "lb");
+  kgUnitBtn.classList.toggle("active", settings.weightUnit === "kg");
+  weightLabel.textContent = `Weight (${settings.weightUnit})`;
+  bodyWeightLabel.textContent = `Weight (${settings.weightUnit})`;
+  renderCurrentWorkout();
+  renderHistory();
+  updatePreviousResult();
+  renderBodyWeights();
+  renderTrends();
 }
 
 function uid() {
@@ -584,6 +777,25 @@ function updateInputMode() {
   const isDuration = def && def.type === "duration";
   strengthFields.classList.toggle("hidden", isDuration);
   durationFields.classList.toggle("hidden", !isDuration);
+
+  cardioExtraFields.classList.add("hidden");
+  distanceField.classList.add("hidden");
+  elevationField.classList.add("hidden");
+
+  if (!isDuration) return;
+
+  const config = CARDIO_CONFIG[def.name] || {};
+  const hasDistance = Boolean(config.distanceUnit);
+  const hasElevation = Boolean(config.elevation);
+
+  if (hasDistance || hasElevation) cardioExtraFields.classList.remove("hidden");
+  if (hasDistance) {
+    distanceField.classList.remove("hidden");
+    distanceLabel.textContent = config.distanceUnit === "m"
+      ? "Distance (m)"
+      : `Distance (${config.distanceUnit})${config.distanceRequired ? "" : " (optional)"}`;
+  }
+  if (hasElevation) elevationField.classList.remove("hidden");
 }
 
 function getExerciseEntries(name) {
@@ -602,6 +814,14 @@ function getExerciseEntries(name) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
+function cardioEntrySummary(entry) {
+  const parts = [`${entry.duration} minutes`];
+  if (Number.isFinite(Number(entry.distanceKm))) parts.push(`${entry.distanceKm} km`);
+  if (Number.isFinite(Number(entry.distanceM))) parts.push(`${entry.distanceM} m`);
+  if (Number.isFinite(Number(entry.elevationM))) parts.push(`${entry.elevationM} m gain`);
+  return parts.join(" · ");
+}
+
 function updatePreviousResult() {
   const name = exerciseEl.value;
   const entries = getExerciseEntries(name);
@@ -614,8 +834,8 @@ function updatePreviousResult() {
   }
 
   const detail = previous.type === "duration"
-    ? `${previous.duration} minutes`
-    : `${previous.weight} lb — ${previous.reps}`;
+    ? cardioEntrySummary(previous)
+    : `${formatWeight(previous.weight)} — ${previous.reps}`;
 
   previousResult.innerHTML = `<strong>Previous:</strong> ${detail}<br><span class="small">${formatDate(previous.createdAt)}</span>`;
   previousResult.classList.remove("hidden");
@@ -630,37 +850,50 @@ function addEntry() {
   if (!def) return;
 
   const entry = {
-    id: uid(),
-    exercise: def.name,
-    category: categoryEl.value,
-    type: def.type,
-    notes: notesEl.value.trim(),
-    createdAt: new Date().toISOString()
+    id: uid(), exercise: def.name, category: categoryEl.value, type: def.type,
+    notes: notesEl.value.trim(), createdAt: new Date().toISOString()
   };
 
   if (def.type === "strength") {
-    const weight = Number(weightEl.value);
+    const enteredWeight = Number(weightEl.value);
     const reps = repsEl.value.trim();
-
-    if (!Number.isFinite(weight) || weight < 0) {
-      showNotice("Enter a valid weight.", "error");
-      return;
+    if (!Number.isFinite(enteredWeight) || enteredWeight < 0) {
+      showNotice("Enter a valid weight.", "error"); return;
     }
-
     if (!validateReps(reps)) {
-      showNotice('Enter reps as three comma-separated numbers, such as "8,8,6".', "error");
-      return;
+      showNotice('Enter reps as three comma-separated numbers, such as "8,8,6".', "error"); return;
     }
-
-    entry.weight = weight;
+    entry.weight = inputWeightToLb(enteredWeight);
     entry.reps = reps.replace(/\s+/g, "");
   } else {
     const duration = Number(durationEl.value);
     if (!Number.isInteger(duration) || duration < 1) {
-      showNotice("Enter duration as a whole number of minutes.", "error");
-      return;
+      showNotice("Enter duration as a whole number of minutes.", "error"); return;
     }
     entry.duration = duration;
+
+    const config = CARDIO_CONFIG[def.name] || {};
+    if (config.distanceUnit) {
+      const rawDistance = distanceEl.value.trim();
+      if (config.distanceRequired && rawDistance === "") {
+        showNotice("Enter a distance for this activity.", "error"); return;
+      }
+      if (rawDistance !== "") {
+        const distance = Number(rawDistance);
+        if (!Number.isFinite(distance) || distance < 0) {
+          showNotice("Enter a valid distance.", "error"); return;
+        }
+        if (config.distanceUnit === "m") entry.distanceM = distance;
+        else entry.distanceKm = distance;
+      }
+    }
+    if (config.elevation && elevationEl.value.trim() !== "") {
+      const elevation = Number(elevationEl.value);
+      if (!Number.isFinite(elevation) || elevation < 0) {
+        showNotice("Enter a valid elevation gain.", "error"); return;
+      }
+      entry.elevationM = elevation;
+    }
   }
 
   currentWorkout.push(entry);
@@ -675,6 +908,8 @@ function clearEntryForm() {
   weightEl.value = "";
   repsEl.value = "";
   durationEl.value = "";
+  distanceEl.value = "";
+  elevationEl.value = "";
   notesEl.value = "";
 }
 
@@ -690,8 +925,8 @@ function renderCurrentWorkout() {
         <div>
           <div class="entry-title">${escapeHtml(entry.exercise)}</div>
           <div class="entry-meta">${entry.type === "duration"
-            ? `${entry.duration} minutes`
-            : `${entry.weight} lb — ${escapeHtml(entry.reps)}`
+            ? cardioEntrySummary(entry)
+            : `${formatWeight(entry.weight)} — ${escapeHtml(entry.reps)}`
           }</div>
           ${entry.notes ? `<div class="entry-meta">${escapeHtml(entry.notes)}</div>` : ""}
         </div>
@@ -712,6 +947,7 @@ window.editCurrentEntry = function(id) {
   if (!updated) return;
 
   Object.assign(entry, updated);
+  Object.keys(entry).forEach(key => entry[key] === undefined && delete entry[key]);
   saveAll();
   renderCurrentWorkout();
   updatePreviousResult();
@@ -732,37 +968,61 @@ function promptForEntry(entry) {
     if (duration === null) return null;
     const parsed = Number(duration);
     if (!Number.isInteger(parsed) || parsed < 1) {
-      showNotice("Duration must be a whole number of minutes.", "error");
-      return null;
+      showNotice("Duration must be a whole number of minutes.", "error"); return null;
     }
+
+    const updated = { duration: parsed };
+    const config = CARDIO_CONFIG[entry.exercise] || {};
+
+    if (config.distanceUnit) {
+      const currentDistance = config.distanceUnit === "m" ? (entry.distanceM ?? "") : (entry.distanceKm ?? "");
+      const distance = prompt(`Distance (${config.distanceUnit}):`, currentDistance);
+      if (distance === null) return null;
+      if (distance.trim() !== "") {
+        const parsedDistance = Number(distance);
+        if (!Number.isFinite(parsedDistance) || parsedDistance < 0) {
+          showNotice("Enter a valid distance.", "error"); return null;
+        }
+        if (config.distanceUnit === "m") updated.distanceM = parsedDistance;
+        else updated.distanceKm = parsedDistance;
+      } else {
+        updated.distanceM = undefined; updated.distanceKm = undefined;
+      }
+    }
+
+    if (config.elevation) {
+      const elevation = prompt("Elevation gain (m):", entry.elevationM ?? "");
+      if (elevation === null) return null;
+      if (elevation.trim() !== "") {
+        const parsedElevation = Number(elevation);
+        if (!Number.isFinite(parsedElevation) || parsedElevation < 0) {
+          showNotice("Enter a valid elevation gain.", "error"); return null;
+        }
+        updated.elevationM = parsedElevation;
+      } else updated.elevationM = undefined;
+    }
+
     const notes = prompt("Notes:", entry.notes || "");
     if (notes === null) return null;
-    return { duration: parsed, notes: notes.trim() };
+    updated.notes = notes.trim();
+    return updated;
   }
 
-  const weight = prompt("Weight in pounds:", entry.weight);
+  const shownWeight = displayWeightFromLb(entry.weight);
+  const weight = prompt(`Weight in ${settings.weightUnit}:`, Math.round(shownWeight * 10) / 10);
   if (weight === null) return null;
   const parsedWeight = Number(weight);
   if (!Number.isFinite(parsedWeight) || parsedWeight < 0) {
-    showNotice("Enter a valid weight.", "error");
-    return null;
+    showNotice("Enter a valid weight.", "error"); return null;
   }
-
   const reps = prompt('Reps for 3 sets, such as "8,8,6":', entry.reps);
   if (reps === null) return null;
   if (!validateReps(reps)) {
-    showNotice('Enter reps as three comma-separated numbers.', "error");
-    return null;
+    showNotice('Enter reps as three comma-separated numbers.', "error"); return null;
   }
-
   const notes = prompt("Notes:", entry.notes || "");
   if (notes === null) return null;
-
-  return {
-    weight: parsedWeight,
-    reps: reps.replace(/\s+/g, ""),
-    notes: notes.trim()
-  };
+  return { weight: inputWeightToLb(parsedWeight), reps: reps.replace(/\s+/g, ""), notes: notes.trim() };
 }
 
 function finishWorkout() {
@@ -826,8 +1086,8 @@ function renderHistory() {
               <div>
                 <div class="entry-title">${escapeHtml(entry.exercise)}</div>
                 <div class="entry-meta">${entry.type === "duration"
-                  ? `${entry.duration} minutes`
-                  : `${entry.weight} lb — ${escapeHtml(entry.reps)}`
+                  ? cardioEntrySummary(entry)
+                  : `${formatWeight(entry.weight)} — ${escapeHtml(entry.reps)}`
                 }</div>
                 ${entry.notes ? `<div class="entry-meta">${escapeHtml(entry.notes)}</div>` : ""}
               </div>
@@ -879,6 +1139,7 @@ window.editHistoryEntry = function(workoutId, entryId) {
   if (!updated) return;
 
   Object.assign(entry, updated);
+  Object.keys(entry).forEach(key => entry[key] === undefined && delete entry[key]);
   saveAll();
   renderHistory();
   renderTrends();
@@ -929,8 +1190,8 @@ function renderExerciseHistory(name) {
     <div class="entry">
       <div class="entry-title">${formatDate(entry.workoutDate)}</div>
       <div class="entry-meta">${entry.type === "duration"
-        ? `${entry.duration} minutes`
-        : `${entry.weight} lb — ${escapeHtml(entry.reps)}`
+        ? cardioEntrySummary(entry)
+        : `${formatWeight(entry.weight)} — ${escapeHtml(entry.reps)}`
       }</div>
       ${entry.notes ? `<div class="entry-meta">${escapeHtml(entry.notes)}</div>` : ""}
     </div>
@@ -939,9 +1200,10 @@ function renderExerciseHistory(name) {
 
 
 function populateTrendExercises() {
-  trendExercise.innerHTML = allExerciseNames()
-    .map(name => `<option value="${name}">${name}</option>`)
-    .join("");
+  trendExercise.innerHTML = `
+    <option value="__body_weight__">Body Weight</option>
+    ${allExerciseNames().map(name => `<option value="${name}">${name}</option>`).join("")}
+  `;
 }
 
 function getCompletedExerciseEntries(name) {
@@ -991,56 +1253,81 @@ function trendPalette(index) {
 
 function renderTrends() {
   const name = trendExercise.value;
-  const def = findExerciseDefinitionByName(name);
-  const entries = getCompletedExerciseEntries(name);
   const ctx = trendCanvas.getContext("2d");
-
   ctx.clearRect(0, 0, trendCanvas.width, trendCanvas.height);
   trendLegend.innerHTML = "";
   trendSummary.textContent = "";
 
+  if (name === "__body_weight__") {
+    trendToggle.classList.add("hidden");
+    cardioMetricWrap.classList.add("hidden");
+    trendDescription.textContent = `Body weight over time (${settings.weightUnit}).`;
+    const points = [...bodyWeights]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(entry => ({ label: shortDate(entry.date + "T12:00:00"), value: displayWeightFromLb(entry.weightLb) }));
+    drawLineChart(points, `Weight (${settings.weightUnit})`, 1);
+    return;
+  }
+
+  const def = findExerciseDefinitionByName(name);
+  const entries = getCompletedExerciseEntries(name);
   if (!def) return;
 
   if (def.type === "duration") {
     trendToggle.classList.add("hidden");
-    trendDescription.textContent = "Duration over time (minutes).";
-    drawLineChart(
-      entries.map(entry => ({
+    cardioMetricWrap.classList.remove("hidden");
+    const config = CARDIO_CONFIG[name] || {};
+    const metrics = [{ value: "duration", label: "Duration" }];
+    if (config.distanceUnit) metrics.push({ value: "distance", label: "Distance" });
+    if (config.elevation) metrics.push({ value: "elevation", label: "Elevation" });
+    const prior = cardioTrendMetric.value;
+    cardioTrendMetric.innerHTML = metrics.map(m => `<option value="${m.value}">${m.label}</option>`).join("");
+    if (metrics.some(m => m.value === prior)) cardioTrendMetric.value = prior;
+
+    const metric = cardioTrendMetric.value || "duration";
+    let points = [], yTitle = "", description = "", decimals = 0;
+    if (metric === "distance") {
+      const unit = config.distanceUnit || "km";
+      points = entries.map(entry => ({
         label: shortDate(entry.workoutDate),
-        value: Number(entry.duration) || 0
-      })),
-      "Minutes"
-    );
+        value: unit === "m" ? Number(entry.distanceM) : Number(entry.distanceKm)
+      })).filter(point => Number.isFinite(point.value));
+      yTitle = `Distance (${unit})`; description = `Distance over time (${unit}).`; decimals = 1;
+    } else if (metric === "elevation") {
+      points = entries.map(entry => ({ label: shortDate(entry.workoutDate), value: Number(entry.elevationM) }))
+        .filter(point => Number.isFinite(point.value));
+      yTitle = "Elevation gain (m)"; description = "Elevation gain over time.";
+    } else {
+      points = entries.map(entry => ({ label: shortDate(entry.workoutDate), value: Number(entry.duration) || 0 }));
+      yTitle = "Minutes"; description = "Duration over time.";
+    }
+    trendDescription.textContent = description;
+    drawLineChart(points, yTitle, decimals);
     if (entries.length) {
       const latest = entries[entries.length - 1];
-      trendSummary.textContent = `Latest: ${latest.duration} minutes on ${shortDate(latest.workoutDate)}.`;
+      trendSummary.textContent = `Latest: ${cardioEntrySummary(latest)} on ${shortDate(latest.workoutDate)}.`;
     }
     return;
   }
 
+  cardioMetricWrap.classList.add("hidden");
   trendToggle.classList.remove("hidden");
-
   if (trendMode === "sets") {
     trendDescription.textContent = "Bar height shows reps for each set. Colour shows the weight used.";
     drawSetsChart(entries);
   } else {
-    trendDescription.textContent = "Training volume = weight × total reps for all 3 sets.";
-    drawLineChart(
-      entries.map(entry => {
-        const reps = parseRepValues(entry.reps);
-        const totalReps = reps.reduce((sum, value) => sum + value, 0);
-        return {
-          label: shortDate(entry.workoutDate),
-          value: (Number(entry.weight) || 0) * totalReps
-        };
-      }),
-      "Volume (lb)"
-    );
+    const unit = settings.weightUnit;
+    trendDescription.textContent = `Training volume = ${unit} × total reps for all 3 sets.`;
+    drawLineChart(entries.map(entry => {
+      const reps = parseRepValues(entry.reps);
+      const totalReps = reps.reduce((sum, value) => sum + value, 0);
+      return { label: shortDate(entry.workoutDate), value: displayWeightFromLb(entry.weight) * totalReps };
+    }), `Volume (${unit})`);
     if (entries.length) {
       const latest = entries[entries.length - 1];
       const reps = parseRepValues(latest.reps);
-      const volume = (Number(latest.weight) || 0) * reps.reduce((a, b) => a + b, 0);
-      trendSummary.textContent = `Latest volume: ${Math.round(volume).toLocaleString()} lb on ${shortDate(latest.workoutDate)}.`;
+      const volume = displayWeightFromLb(latest.weight) * reps.reduce((a, b) => a + b, 0);
+      trendSummary.textContent = `Latest volume: ${Math.round(volume).toLocaleString()} ${unit} on ${shortDate(latest.workoutDate)}.`;
     }
   }
 }
@@ -1096,7 +1383,7 @@ function drawAxes(ctx, maxValue, labels, yTitle) {
   return { left, right, top, bottom, plotHeight };
 }
 
-function drawLineChart(points, yTitle) {
+function drawLineChart(points, yTitle, decimals = 0) {
   const ctx = prepareCanvas(points.length);
 
   if (!points.length) {
@@ -1141,7 +1428,10 @@ function drawLineChart(points, yTitle) {
 
     ctx.fillStyle = "#1f2933";
     ctx.font = "11px system-ui";
-    ctx.fillText(Math.round(point.value).toLocaleString(), x, y - 10);
+    const labelValue = decimals > 0
+      ? (Math.round(point.value * (10 ** decimals)) / (10 ** decimals)).toLocaleString()
+      : Math.round(point.value).toLocaleString();
+    ctx.fillText(labelValue, x, y - 10);
   });
 }
 
@@ -1165,7 +1455,7 @@ function drawSetsChart(entries) {
   trendLegend.innerHTML = weights.map(weight => `
     <span class="legend-item">
       <span class="legend-swatch" style="background:${colourByWeight.get(weight)}"></span>
-      ${weight} lb
+      ${formatWeight(weight)}
     </span>
   `).join("");
 
@@ -1204,21 +1494,88 @@ function drawSetsChart(entries) {
 
     ctx.fillStyle = colour;
     ctx.font = "11px system-ui";
-    ctx.fillText(`${entry.weight} lb`, groupCenter, area.bottom + 38);
+    ctx.fillText(formatWeight(entry.weight), groupCenter, area.bottom + 38);
   });
 
   const latest = parsed[parsed.length - 1];
   trendSummary.textContent =
-    `Latest: ${latest.weight} lb — ${latest.repValues.join(",")} on ${shortDate(latest.workoutDate)}.`;
+    `Latest: ${formatWeight(latest.weight)} — ${latest.repValues.join(",")} on ${shortDate(latest.workoutDate)}.`;
 }
 
+
+
+function todayLocalDate() {
+  const d = new Date();
+  const pad = value => String(value).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function saveBodyWeight() {
+  const date = bodyWeightDate.value;
+  const entered = Number(bodyWeightInput.value);
+  if (!date) { showNotice("Choose a date.", "error"); return; }
+  if (!Number.isFinite(entered) || entered <= 0) { showNotice("Enter a valid weight.", "error"); return; }
+
+  const weightLb = inputWeightToLb(entered);
+  const existing = bodyWeights.find(entry => entry.date === date);
+  if (existing) existing.weightLb = weightLb;
+  else bodyWeights.push({ id: uid(), date, weightLb });
+
+  bodyWeights.sort((a, b) => b.date.localeCompare(a.date));
+  saveAll();
+  bodyWeightInput.value = "";
+  renderBodyWeights();
+  renderTrends();
+  showNotice(existing ? "Daily weight updated." : "Daily weight saved.");
+}
+
+function renderBodyWeights() {
+  if (!bodyWeights.length) {
+    bodyWeightList.innerHTML = `<div class="empty">No body-weight entries yet.</div>`;
+    return;
+  }
+  const recent = [...bodyWeights].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+  bodyWeightList.innerHTML = recent.map(entry => `
+    <div class="entry">
+      <div class="entry-top">
+        <div>
+          <div class="entry-title">${new Date(entry.date + "T12:00:00").toLocaleDateString()}</div>
+          <div class="entry-meta">${formatWeight(entry.weightLb)}</div>
+        </div>
+        <div class="button-row">
+          <button class="btn-secondary" onclick="editBodyWeight('${entry.id}')">Edit</button>
+          <button class="btn-danger" onclick="deleteBodyWeight('${entry.id}')">Delete</button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+window.editBodyWeight = function(id) {
+  const entry = bodyWeights.find(item => item.id === id);
+  if (!entry) return;
+  const shown = displayWeightFromLb(entry.weightLb);
+  const value = prompt(`Weight in ${settings.weightUnit}:`, Math.round(shown * 10) / 10);
+  if (value === null) return;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) { showNotice("Enter a valid weight.", "error"); return; }
+  entry.weightLb = inputWeightToLb(parsed);
+  saveAll(); renderBodyWeights(); renderTrends();
+};
+
+window.deleteBodyWeight = function(id) {
+  if (!confirm("Delete this body-weight entry?")) return;
+  bodyWeights = bodyWeights.filter(entry => entry.id !== id);
+  saveAll(); renderBodyWeights(); renderTrends();
+};
 
 function exportData() {
   const payload = {
     version: 1,
     exportedAt: new Date().toISOString(),
     workouts,
-    currentWorkout
+    currentWorkout,
+    bodyWeights,
+    settings
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -1243,9 +1600,19 @@ function importData(file) {
 
       workouts = data.workouts;
       currentWorkout = data.currentWorkout;
+      bodyWeights = Array.isArray(data.bodyWeights) ? data.bodyWeights : [];
+      if (data.settings && typeof data.settings === "object") {
+        settings = {
+          theme: data.settings.theme === "dark" ? "dark" : "light",
+          weightUnit: data.settings.weightUnit === "kg" ? "kg" : "lb"
+        };
+      }
       saveAll();
+      applySettings();
       renderCurrentWorkout();
       renderHistory();
+      renderBodyWeights();
+      renderTrends();
       updatePreviousResult();
       showNotice("Backup imported.");
     } catch {
@@ -1260,9 +1627,12 @@ function deleteAllData() {
   if (!confirm("This cannot be undone. Delete everything?")) return;
   workouts = [];
   currentWorkout = [];
+  bodyWeights = [];
   saveAll();
   renderCurrentWorkout();
   renderHistory();
+  renderBodyWeights();
+  renderTrends();
   exerciseHistoryCard.classList.add("hidden");
   updatePreviousResult();
   showNotice("All data deleted.");
@@ -1330,6 +1700,13 @@ document.getElementById("importFile").addEventListener("change", event => {
 document.getElementById("deleteAllBtn").addEventListener("click", deleteAllData);
 
 trendExercise.addEventListener("change", renderTrends);
+cardioTrendMetric.addEventListener("change", renderTrends);
+saveBodyWeightBtn.addEventListener("click", saveBodyWeight);
+
+lightThemeBtn.addEventListener("click", () => { settings.theme = "light"; saveAll(); applySettings(); });
+darkThemeBtn.addEventListener("click", () => { settings.theme = "dark"; saveAll(); applySettings(); });
+lbUnitBtn.addEventListener("click", () => { settings.weightUnit = "lb"; saveAll(); applySettings(); });
+kgUnitBtn.addEventListener("click", () => { settings.weightUnit = "kg"; saveAll(); applySettings(); });
 
 volumeTrendBtn.addEventListener("click", () => {
   trendMode = "volume";
@@ -1348,8 +1725,11 @@ setsTrendBtn.addEventListener("click", () => {
 populateCategories();
 populateHistoryFilter();
 populateTrendExercises();
+bodyWeightDate.value = todayLocalDate();
+applySettings();
 renderCurrentWorkout();
 renderHistory();
+renderBodyWeights();
 renderTrends();
 </script>
 <script>
