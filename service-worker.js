@@ -1,11 +1,13 @@
-const CACHE_NAME = "workout-tracker-v3";
+const CACHE_NAME = "workout-tracker-v4";
 
 const FILES_TO_CACHE = [
   "/workout-tracker/",
   "/workout-tracker/index.html",
   "/workout-tracker/manifest.json",
   "/workout-tracker/icon-192.png",
-  "/workout-tracker/icon-512.png"
+  "/workout-tracker/icon-512.png",
+  "/workout-tracker/icon-maskable-192.png",
+  "/workout-tracker/icon-maskable-512.png"
 ];
 
 self.addEventListener("install", event => {
