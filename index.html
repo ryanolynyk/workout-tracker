@@ -115,12 +115,14 @@
 
   .tabs {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
     margin: 16px 0;
   }
 
   .tab {
+    min-width: 0;
+    overflow-wrap: anywhere;
     border: 1px solid var(--border);
     background: var(--panel);
     color: var(--text);
@@ -372,10 +374,37 @@
 
   @media (max-width: 640px) {
     .app { padding: 12px; }
+    .tabs { gap: 4px; }
+    .tab { padding: 10px 3px; font-size: 0.73rem; }
     .grid.two { grid-template-columns: 1fr; }
     .entry-top { flex-direction: column; }
     .button-row button { flex: 1 1 auto; }
   }
+
+  #nutritionSaveBtn:disabled { background:#98a2b3; color:#ffffff; cursor:not-allowed; opacity:.75; }
+  .nutrition-pills { display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 16px; }
+  .nutrition-pill { padding:9px 12px; border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:.88rem; border-radius:999px; font-weight:600; }
+  .nutrition-pill.selected { background:var(--primary);border-color:var(--primary);color:white; }
+  .nutrition-pill:disabled { opacity:.48;cursor:not-allowed; }
+  .nutrition-heading { display:flex;justify-content:space-between;align-items:center;gap:10px; }
+  .nutrition-heading h3 { margin:10px 0 0; }
+  .nutrition-count { color:var(--muted);font-size:.88rem; }
+  .nutrition-stars { display:flex;gap:2px;align-items:center; }
+  .nutrition-star { background:transparent;color:var(--muted);font-size:1.5rem;padding:2px 5px; }
+  .nutrition-star.filled { color:#e7a527; }
+  .nutrition-day { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px; }
+  .nutrition-slot { padding:12px 5px;border:1px solid var(--border);border-radius:10px;text-align:center;background:var(--panel);color:var(--text);font-size:.85rem; }
+  .nutrition-slot.done { border-color:var(--success);background:var(--success-bg);color:var(--success); }
+  .nutrition-slot.active { outline:2px solid var(--primary);outline-offset:1px; }
+  .nutrition-list .entry { margin-bottom:10px; }
+  .nutrition-list .button-row { margin-top:8px; }
+  .nutrition-list .button-row button { padding:7px 10px;font-size:.85rem; }
+  .nutrition-note { width:100%;margin-top:8px; }
+  .nutrition-status { margin:8px 0 0;color:var(--muted);font-size:.88rem; }
+  .nutrition-group { margin-top:14px; }
+  .nutrition-group > h4 { margin:10px 0 4px; }
+  .nutrition-compact { font-size:.89rem;color:var(--muted);margin:5px 0; }
+  @media(max-width:390px) { .tab { font-size:.67rem; } }
 </style>
 </head>
 <body>
@@ -391,6 +420,7 @@
     <button class="tab active" data-tab="current">Current Workout</button>
     <button class="tab" data-tab="history">History</button>
     <button class="tab" data-tab="trends">Trends</button>
+    <button class="tab" data-tab="nutrition">Nutrition</button>
     <button class="tab" data-tab="data">Data</button>
   </nav>
 
@@ -527,6 +557,53 @@
     </div>
   </section>
 
+
+  <section id="nutrition" class="panel">
+    <div class="card">
+      <h2>Nutrition · Bowl Plan</h2>
+      <p class="small">Three meals a day. Choose 1–3 proteins, 1–10 volume ingredients, and exactly one measured fat. Fill your bowl before saving.</p>
+      <div class="grid two">
+        <div><label for="nutritionDate">Date</label><input id="nutritionDate" type="date" /></div>
+        <div><label for="nutritionMealType">Meal</label><select id="nutritionMealType"><option>Breakfast</option><option>Lunch</option><option>Dinner</option></select></div>
+      </div>
+      <div id="nutritionDaySlots" class="nutrition-day" style="margin-top:14px"></div>
+      <div class="button-row">
+        <button class="btn-primary" id="nutritionBuildBtn" type="button">Build a Meal</button>
+        <button class="btn-primary" id="nutritionSurpriseBtn" type="button">🎲 Surprise Me!</button>
+      </div>
+    </div>
+    <div id="nutritionBuilder" class="card hidden">
+      <h2 id="nutritionBuilderTitle">Build a Meal</h2>
+      <p class="small">Tap ingredients to select or remove them. Surprise Me Again replaces the suggestion; it doesn't save anything.</p>
+      <div class="nutrition-heading"><h3>Protein</h3><span id="nutritionProteinCount" class="nutrition-count"></span></div>
+      <div id="nutritionProteinOptions" class="nutrition-pills"></div>
+      <div class="nutrition-heading"><h3>Volume</h3><span id="nutritionVolumeCount" class="nutrition-count"></span></div>
+      <div id="nutritionVolumeOptions"></div>
+      <div class="nutrition-heading"><h3>Fat</h3><span class="nutrition-count">Exactly 1</span></div>
+      <div id="nutritionFatOptions" class="nutrition-pills"></div>
+      <label style="display:flex;align-items:center;gap:10px;margin:14px 0"><input id="nutritionBowlFilled" type="checkbox" style="width:auto" /> My bowl is filled</label>
+      <div class="button-row">
+        <button class="btn-primary" id="nutritionSaveBtn" type="button">Save Meal</button>
+        <button class="btn-primary" id="nutritionAgainBtn" type="button">🎲 Surprise Me Again</button>
+        <button class="btn-primary" id="nutritionCancelBtn" type="button">Cancel</button>
+      </div>
+      <p class="nutrition-status" id="nutritionBuilderStatus"></p>
+    </div>
+    <div class="card">
+      <h2>Meals for Selected Day</h2>
+      <div id="nutritionTodayList" class="nutrition-list"></div>
+    </div>
+    <div class="card">
+      <h2>Recent Favourites</h2>
+      <p class="small">Your highest-rated combinations. Tap Reuse to start a new meal with those ingredients.</p>
+      <div id="nutritionFavoritesList" class="nutrition-list"></div>
+    </div>
+    <div class="card">
+      <h2>Meal History</h2>
+      <div id="nutritionHistoryList" class="nutrition-list"></div>
+    </div>
+  </section>
+
   <section id="data" class="panel">
     <div class="card">
       <h2>Settings</h2>
@@ -630,6 +707,7 @@ const STORAGE_KEY = "simpleWorkoutTrackerData_v1";
 const CURRENT_KEY = "simpleWorkoutTrackerCurrent_v1";
 const BODY_WEIGHT_KEY = "simpleWorkoutTrackerBodyWeight_v1";
 const SETTINGS_KEY = "simpleWorkoutTrackerSettings_v1";
+const NUTRITION_KEY = "simpleWorkoutTrackerNutrition_v1";
 const LB_PER_KG = 2.2046226218;
 
 const CARDIO_CONFIG = {
@@ -647,6 +725,8 @@ const CARDIO_CONFIG = {
 let workouts = loadJson(STORAGE_KEY, []);
 let currentWorkout = loadJson(CURRENT_KEY, []);
 let bodyWeights = loadJson(BODY_WEIGHT_KEY, []);
+let nutritionMeals = loadJson(NUTRITION_KEY, []);
+if (!Array.isArray(nutritionMeals)) nutritionMeals = [];
 let settings = loadJson(SETTINGS_KEY, { theme: "light", weightUnit: "lb", bodyWeightUnit: "lb" });
 
 if (!settings || typeof settings !== "object") settings = {};
@@ -714,6 +794,7 @@ function saveAll() {
   localStorage.setItem(CURRENT_KEY, JSON.stringify(currentWorkout));
   localStorage.setItem(BODY_WEIGHT_KEY, JSON.stringify(bodyWeights));
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(NUTRITION_KEY, JSON.stringify(nutritionMeals));
 }
 
 function displayWeightFromLb(lb) {
@@ -1604,6 +1685,7 @@ function exportData() {
     workouts,
     currentWorkout,
     bodyWeights,
+    nutritionMeals,
     settings
   };
 
@@ -1630,6 +1712,7 @@ function importData(file) {
       workouts = data.workouts;
       currentWorkout = data.currentWorkout;
       bodyWeights = Array.isArray(data.bodyWeights) ? data.bodyWeights : [];
+      nutritionMeals = Array.isArray(data.nutritionMeals) ? data.nutritionMeals : [];
       if (data.settings && typeof data.settings === "object") {
         settings = {
           theme: data.settings.theme === "dark" ? "dark" : "light",
@@ -1643,6 +1726,7 @@ function importData(file) {
       renderHistory();
       renderBodyWeights();
       renderTrends();
+      renderNutrition();
       updatePreviousResult();
       showNotice("Backup imported.");
     } catch {
@@ -1658,11 +1742,13 @@ function deleteAllData() {
   workouts = [];
   currentWorkout = [];
   bodyWeights = [];
+  nutritionMeals = [];
   saveAll();
   renderCurrentWorkout();
   renderHistory();
   renderBodyWeights();
   renderTrends();
+  renderNutrition();
   exerciseHistoryCard.classList.add("hidden");
   updatePreviousResult();
   showNotice("All data deleted.");
@@ -1764,6 +1850,207 @@ setsTrendBtn.addEventListener("click", () => {
   volumeTrendBtn.classList.remove("active");
   renderTrends();
 });
+
+
+// Nutrition data and meal builder: kept separate from existing workout records.
+const NUTRITION_INGREDIENTS = {
+  protein: ["Chicken breast", "Shrimp", "Egg whites", "Tuna", "Tilapia", "0% Greek Yogurt", "0% Cottage Cheese"],
+  volume: {
+    Vegetables: ["Broccoli", "Cabbage", "Lettuce", "Spinach", "Mushrooms", "Cucumber", "Cauliflower", "Zucchini", "Kimchi", "Pumpkin", "Carrots", "Squash"],
+    Fruits: ["Strawberries", "Watermelon", "Cantaloupe", "Honeydew"],
+    Other: ["Konjac noodles", "Sugar-free Jell-O"]
+  },
+  fat: ["1 tbsp olive oil", "1 tbsp half-fat mayo", "2 tbsp chia seeds", "20 olives", "1/2 avocado", "2 whole eggs", "20 almonds", "2 tbsp light cream cheese"]
+};
+const NUTRITION_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner"];
+const NUTRITION_STYLES = [
+  { name:"Sweet yogurt bowl", proteins:["0% Greek Yogurt", "0% Cottage Cheese"], volumes:["Strawberries", "Watermelon", "Cantaloupe", "Honeydew", "Pumpkin", "Sugar-free Jell-O"], fats:["2 tbsp chia seeds", "20 almonds", "2 tbsp light cream cheese"] },
+  { name:"Garden salad", proteins:["Chicken breast", "Shrimp", "Tuna", "Tilapia", "Egg whites"], volumes:["Lettuce", "Spinach", "Cucumber", "Carrots", "Cabbage", "Mushrooms", "Zucchini", "Kimchi"], fats:["1 tbsp olive oil", "1 tbsp half-fat mayo", "20 olives", "1/2 avocado", "2 whole eggs"] },
+  { name:"Warm vegetable bowl", proteins:["Chicken breast", "Shrimp", "Tilapia", "Egg whites"], volumes:["Broccoli", "Cabbage", "Spinach", "Mushrooms", "Cauliflower", "Zucchini", "Carrots", "Squash", "Pumpkin", "Konjac noodles"], fats:["1 tbsp olive oil", "1/2 avocado", "2 whole eggs", "2 tbsp light cream cheese"] },
+  { name:"Noodle bowl", proteins:["Chicken breast", "Shrimp", "Tilapia", "Egg whites"], volumes:["Konjac noodles", "Cabbage", "Spinach", "Mushrooms", "Zucchini", "Broccoli", "Carrots", "Kimchi"], fats:["1 tbsp olive oil", "1 tbsp half-fat mayo", "2 whole eggs"] },
+  { name:"Tuna salad", proteins:["Tuna", "Egg whites"], volumes:["Lettuce", "Spinach", "Cucumber", "Carrots", "Cabbage", "Kimchi"], fats:["1 tbsp half-fat mayo", "1/2 avocado", "20 olives", "2 whole eggs"] }
+];
+let nutritionDraft = { protein:[], volume:[], fat:null };
+let nutritionEditingId = null;
+let nutritionLastSuggestion = "";
+const nutritionEl = id => document.getElementById(id);
+const nutritionVolumeNames = Object.values(NUTRITION_INGREDIENTS.volume).flat();
+function nutritionSignature(meal) {
+  return JSON.stringify([...(meal.protein||[])].sort()) + "|" + JSON.stringify([...(meal.volume||[])].sort()) + "|" + meal.fat;
+}
+function nutritionValid(draft) {
+  return draft.protein.length >= 1 && draft.protein.length <= 3 && draft.volume.length >= 1 && draft.volume.length <= 10 && !!draft.fat;
+}
+function nutritionDraftCopy(meal) {
+  return { protein:[...(meal.protein||[])].map(p=>p==="0% fat/sugar-free Greek yogurt"?"0% Greek Yogurt":p==="0% fat cottage cheese"?"0% Cottage Cheese":p), volume:[...(meal.volume||[])], fat:meal.fat||null };
+}
+function nutritionDate() { return nutritionEl("nutritionDate").value; }
+function nutritionType() { return nutritionEl("nutritionMealType").value; }
+function nutritionSelectedMeal() { return nutritionMeals.find(m=>m.date===nutritionDate()&&m.type===nutritionType()); }
+function nutritionBegin(draft, editingId=null, title="Build a Meal") {
+  nutritionDraft = nutritionDraftCopy(draft);
+  nutritionEditingId = editingId;
+  nutritionEl("nutritionBuilderTitle").textContent = title;
+  nutritionEl("nutritionBowlFilled").checked = editingId ? !!nutritionMeals.find(m=>m.id===editingId)?.bowlFilled : false;
+  nutritionEl("nutritionBuilder").classList.remove("hidden");
+  renderNutritionBuilder();
+  nutritionEl("nutritionBuilder").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function nutritionSelect(kind, ingredient) {
+  if(kind==="fat") nutritionDraft.fat = ingredient;
+  else {
+    const list=nutritionDraft[kind];
+    const index=list.indexOf(ingredient);
+    if(index>=0) list.splice(index,1);
+    else if(list.length < (kind==="protein"?3:10)) list.push(ingredient);
+  }
+  renderNutritionBuilder();
+}
+function nutritionPills(kind, options) {
+  return options.map(name=>{
+    const selected=kind==="fat"?nutritionDraft.fat===name:nutritionDraft[kind].includes(name);
+    const max=kind==="protein"?3:10;
+    const disabled=kind!=="fat"&&!selected&&nutritionDraft[kind].length>=max;
+    return `<button type="button" class="nutrition-pill ${selected?"selected":""}" data-nutrition-kind="${kind}" data-nutrition-name="${escapeHtml(name)}" aria-pressed="${selected}" ${disabled?"disabled":""}>${escapeHtml(name)}</button>`;
+  }).join("");
+}
+function nutritionUpdateSaveButton() {
+  nutritionEl("nutritionSaveBtn").disabled = !(nutritionValid(nutritionDraft) && nutritionEl("nutritionBowlFilled").checked);
+}
+function renderNutritionBuilder() {
+  nutritionEl("nutritionProteinOptions").innerHTML=nutritionPills("protein",NUTRITION_INGREDIENTS.protein);
+  nutritionEl("nutritionProteinCount").textContent=`${nutritionDraft.protein.length}/3 · min 1`;
+  nutritionEl("nutritionVolumeCount").textContent=`${nutritionDraft.volume.length}/10 · min 1`;
+  nutritionEl("nutritionVolumeOptions").innerHTML=Object.entries(NUTRITION_INGREDIENTS.volume).map(([group,options])=>`<div class="nutrition-group"><h4>${group}</h4><div class="nutrition-pills">${nutritionPills("volume",options)}</div></div>`).join("");
+  nutritionEl("nutritionFatOptions").innerHTML=nutritionPills("fat",NUTRITION_INGREDIENTS.fat);
+  nutritionEl("nutritionBuilderStatus").textContent=nutritionValid(nutritionDraft)?"Ingredient selections meet the bowl rules.":"Select at least 1 protein, 1 volume ingredient, and 1 fat.";
+  nutritionUpdateSaveButton();
+}
+function nutritionPick(array) { return array[Math.floor(Math.random()*array.length)]; }
+function nutritionWeightedPick(array,scoreFn) {
+  const weights=array.map(x=>Math.max(.05,scoreFn(x)));
+  let n=Math.random()*weights.reduce((a,b)=>a+b,0);
+  for(let i=0;i<array.length;i++){n-=weights[i];if(n<=0)return array[i];}
+  return array[array.length-1];
+}
+function nutritionRatingsFor(draft) {
+  const matches=nutritionMeals.filter(m=>nutritionSignature(m)===nutritionSignature(draft)&&m.rating>=1);
+  return matches.length ? matches.reduce((s,m)=>s+m.rating,0)/matches.length : null;
+}
+function nutritionSurprise() {
+  let result=null;
+  for(let attempt=0;attempt<35;attempt++) {
+    const style=nutritionPick(NUTRITION_STYLES);
+    const p=[nutritionPick(style.proteins)];
+    const v=[...style.volumes].sort(()=>Math.random()-.5).slice(0,2+Math.floor(Math.random()*3));
+    const draft={protein:p,volume:v,fat:nutritionPick(style.fats)};
+    const rating=nutritionRatingsFor(draft);
+    const weight=rating===null?1:rating===5?3:rating===4?2:rating===3?1:.2;
+    if(Math.random()<Math.min(1,weight/3) && nutritionSignature(draft)!==nutritionLastSuggestion) {result=draft;break;}
+    if(!result && nutritionSignature(draft)!==nutritionLastSuggestion)result=draft;
+  }
+  // Sometimes reuse a previously loved exact combination; keep discovering new combinations too.
+  const favorites=nutritionMeals.filter(m=>m.rating>=4);
+  if(favorites.length && Math.random()<.35) {
+    const favorite=nutritionWeightedPick(favorites,m=>m.rating===5?3:1.5);
+    const favoriteDraft=nutritionDraftCopy(favorite);
+    if(nutritionSignature(favoriteDraft)!==nutritionLastSuggestion)result=favoriteDraft;
+  }
+  result=result||{protein:["Chicken breast"],volume:["Broccoli","Mushrooms"],fat:"1 tbsp olive oil"};
+  nutritionLastSuggestion=nutritionSignature(result);
+  nutritionBegin(result,null,"Surprise Me · Customize Your Bowl");
+}
+function nutritionSave() {
+  if(!nutritionDate()) {showNotice("Choose a meal date.","error");return;}
+  if(!nutritionValid(nutritionDraft)) {showNotice("Choose 1–3 proteins, 1–10 volume ingredients, and exactly 1 fat.","error");return;}
+  if(!nutritionEl("nutritionBowlFilled").checked) {showNotice("Confirm that your bowl is filled.","error");return;}
+  const existing=nutritionSelectedMeal();
+  if(existing && existing.id!==nutritionEditingId) {showNotice("This meal is already recorded. Edit it instead.","error");return;}
+  const editing=nutritionMeals.find(m=>m.id===nutritionEditingId);
+  if(editing) {
+    Object.assign(editing,nutritionDraftCopy(nutritionDraft),{date:nutritionDate(),type:nutritionType(),bowlFilled:true});
+  } else {
+    nutritionMeals.push({id:uid(),date:nutritionDate(),type:nutritionType(),...nutritionDraftCopy(nutritionDraft),bowlFilled:true,rating:null,notes:"",createdAt:new Date().toISOString()});
+  }
+  saveAll();
+  nutritionEl("nutritionBuilder").classList.add("hidden");
+  nutritionEditingId=null;
+  renderNutrition();
+  showNotice("Meal saved. You can rate it after eating.");
+}
+function nutritionMealDetails(m) {
+  return `<div class="nutrition-compact"><strong>Protein:</strong> ${m.protein.map(escapeHtml).join(", ")}</div><div class="nutrition-compact"><strong>Volume:</strong> ${m.volume.map(escapeHtml).join(", ")}</div><div class="nutrition-compact"><strong>Fat:</strong> ${escapeHtml(m.fat)}</div>`;
+}
+function nutritionStars(m) {
+  return `<div class="nutrition-stars" aria-label="Rating ${m.rating||0} out of 5">${[1,2,3,4,5].map(n=>`<button type="button" class="nutrition-star ${n<=(m.rating||0)?"filled":""}" data-nutrition-rate="${m.id}" data-nutrition-stars="${n}" aria-label="Rate ${n} stars">${n<=(m.rating||0)?"★":"☆"}</button>`).join("")}<span class="small">${m.rating?`${m.rating}/5`:"Unrated"}</span></div>`;
+}
+function nutritionMealCard(m,actions=true) {
+  return `<div class="entry"><div class="entry-title">${escapeHtml(m.type)} · ${escapeHtml(m.date)}</div>${nutritionMealDetails(m)}${nutritionStars(m)}<label class="small" for="nutrition-note-${m.id}">Notes (optional)</label><textarea class="nutrition-note" id="nutrition-note-${m.id}" data-nutrition-note="${m.id}" placeholder="What worked? What would you change?">${escapeHtml(m.notes||"")}</textarea>${actions?`<div class="button-row"><button type="button" class="btn-secondary" data-nutrition-edit="${m.id}">Edit Meal</button><button type="button" class="btn-secondary" data-nutrition-reuse="${m.id}">Reuse</button><button type="button" class="btn-danger" data-nutrition-delete="${m.id}">Delete</button></div>`:""}</div>`;
+}
+function renderNutrition() {
+  const date=nutritionDate();
+  const type=nutritionType();
+  nutritionEl("nutritionDaySlots").innerHTML=NUTRITION_MEAL_TYPES.map(t=>{
+    const found=nutritionMeals.find(m=>m.date===date&&m.type===t);
+    return `<button type="button" data-nutrition-slot="${t}" class="nutrition-slot ${found?"done":""} ${t===type?"active":""}">${escapeHtml(t)}<div>${found?"✓ Saved":"Not saved"}</div></button>`;
+  }).join("");
+  const today=nutritionMeals.filter(m=>m.date===date).sort((a,b)=>NUTRITION_MEAL_TYPES.indexOf(a.type)-NUTRITION_MEAL_TYPES.indexOf(b.type));
+  nutritionEl("nutritionTodayList").innerHTML=today.length?today.map(m=>nutritionMealCard(m)).join(""):'<div class="empty">No meals recorded for this date.</div>';
+  const favorites=nutritionMeals.filter(m=>m.rating>=4).sort((a,b)=>b.rating-a.rating||b.date.localeCompare(a.date));
+  const seen=new Set();
+  const unique=favorites.filter(m=>{const key=nutritionSignature(m);if(seen.has(key))return false;seen.add(key);return true;}).slice(0,6);
+  nutritionEl("nutritionFavoritesList").innerHTML=unique.length?unique.map(m=>`<div class="entry"><div class="entry-title">${m.rating} ★ · ${escapeHtml(m.type)}</div>${nutritionMealDetails(m)}<button class="btn-secondary" type="button" data-nutrition-reuse="${m.id}">Reuse This Meal</button></div>`).join(""):'<div class="empty">Rate meals 4 or 5 stars to see favourites here.</div>';
+  const history=nutritionMeals.filter(m=>m.date!==date).sort((a,b)=>b.date.localeCompare(a.date)||NUTRITION_MEAL_TYPES.indexOf(a.type)-NUTRITION_MEAL_TYPES.indexOf(b.type));
+  nutritionEl("nutritionHistoryList").innerHTML=history.length?history.map(m=>nutritionMealCard(m)).join(""):'<div class="empty">Your previous meals will appear here.</div>';
+}
+nutritionEl("nutritionDate").value=todayLocalDate();
+nutritionEl("nutritionDate").addEventListener("change",()=>{nutritionEl("nutritionBuilder").classList.add("hidden");renderNutrition();});
+nutritionEl("nutritionMealType").addEventListener("change",()=>{nutritionEl("nutritionBuilder").classList.add("hidden");renderNutrition();});
+nutritionEl("nutritionBuildBtn").addEventListener("click",()=>{
+  const existing=nutritionSelectedMeal();
+  if(existing){nutritionBegin(existing,existing.id,"Edit Saved Meal");return;}
+  nutritionBegin({protein:[],volume:[],fat:null});
+});
+nutritionEl("nutritionSurpriseBtn").addEventListener("click",()=>{
+  if(nutritionSelectedMeal()){showNotice("This meal is already saved. Select an empty meal slot to generate another.","error");return;}
+  nutritionSurprise();
+});
+nutritionEl("nutritionAgainBtn").addEventListener("click",()=>{
+  if(nutritionEditingId){showNotice("Finish editing or cancel before generating a new meal.","error");return;}
+  nutritionSurprise();
+});
+nutritionEl("nutritionBowlFilled").addEventListener("change",nutritionUpdateSaveButton);
+nutritionEl("nutritionSaveBtn").addEventListener("click",nutritionSave);
+nutritionEl("nutritionCancelBtn").addEventListener("click",()=>nutritionEl("nutritionBuilder").classList.add("hidden"));
+nutritionEl("nutritionBuilder").addEventListener("click",event=>{
+  const btn=event.target.closest("[data-nutrition-kind]");
+  if(btn)nutritionSelect(btn.dataset.nutritionKind,btn.dataset.nutritionName);
+});
+nutritionEl("nutrition").addEventListener("click",event=>{
+  const btn=event.target.closest("button");if(!btn)return;
+  if(btn.dataset.nutritionSlot){nutritionEl("nutritionMealType").value=btn.dataset.nutritionSlot;nutritionEl("nutritionBuilder").classList.add("hidden");renderNutrition();return;}
+  if(btn.dataset.nutritionRate){
+    const m=nutritionMeals.find(x=>x.id===btn.dataset.nutritionRate);if(!m)return;
+    const rating=Number(btn.dataset.nutritionStars);m.rating=m.rating===rating?null:rating;
+    saveAll();renderNutrition();return;
+  }
+  const id=btn.dataset.nutritionEdit||btn.dataset.nutritionReuse||btn.dataset.nutritionDelete;
+  if(!id)return;
+  const m=nutritionMeals.find(x=>x.id===id);if(!m)return;
+  if(btn.dataset.nutritionDelete){if(!confirm(`Delete ${m.type} on ${m.date}?`))return;nutritionMeals=nutritionMeals.filter(x=>x.id!==id);saveAll();renderNutrition();return;}
+  if(btn.dataset.nutritionEdit){nutritionEl("nutritionDate").value=m.date;nutritionEl("nutritionMealType").value=m.type;renderNutrition();nutritionBegin(m,m.id,"Edit Saved Meal");return;}
+  if(btn.dataset.nutritionReuse){
+    if(nutritionSelectedMeal()){showNotice("Choose an empty meal slot before reusing a favourite.","error");return;}
+    nutritionBegin(m,null,"Reuse Favourite · Customize");
+  }
+});
+nutritionEl("nutrition").addEventListener("change",event=>{
+  const field=event.target.closest("[data-nutrition-note]");if(!field)return;
+  const m=nutritionMeals.find(x=>x.id===field.dataset.nutritionNote);if(!m)return;
+  m.notes=field.value.trim();saveAll();
+  // Don't rerender while the user is typing; change fires on blur.
+});
+renderNutrition();
 
 populateCategories();
 populateHistoryFilter();
